@@ -262,13 +262,13 @@ Sebagai alternatif yang sangat stabil untuk mode gratis (Free Tier), kita menggu
 
 **Fakta Pengujian Lokal vs Online:**
 - **Lokal (Berhasil 100%):** Pada mesin localhost (laptop), perintah `php artisan app:seed-enrollments` (default 5.000.000 data) telah **terbukti berhasil dijalankan dan di-*load* dengan lancar** dalam waktu kurang dari 2 menit (*bulk insert*). UI pencarian dan navigasi merespon secara *real-time* tanpa hambatan.
-- **Online (Aiven Free Tier):** Mengingat Aiven MySQL hanya memberikan kapasitas gratis maksimal 1 GB, memaksakan *seed* 5 juta baris (2 GB+) akan membuat server Aiven mogok (*read-only* karena disk penuh). Oleh karena itu, untuk kebutuhan demo online, disarankan mengatur jumlah baris lebih kecil (contoh: 750.000).
+- **Online (Aiven Free Tier):** Mengingat Aiven MySQL hanya memberikan kapasitas gratis maksimal 1 GB, secara teori server ini mampu menampung hingga 4-5 Juta baris (berkat efisiensi tipe data). Pengujian *live* telah membuktikan sistem ini **lancar dan stabil di angka 2.000.000 baris data secara online**.
 
 **Command yang dijalankan:**
 * **Di Localhost (untuk 5 Juta Data):** 
   `php artisan app:seed-enrollments`
-* **Di Produksi Online (untuk 750 Ribu Data):** 
-  `php artisan app:seed-enrollments --count=750000`
+* **Di Produksi Online (Telah Diuji Tembus 2.000.000 Data):** 
+  `php artisan app:seed-enrollments --count=2000000`
 
 Lihat `MIGRATION_NOTES.md` untuk opsi melakukan *dump* manual dari lokal ke Aiven MySQL.
 

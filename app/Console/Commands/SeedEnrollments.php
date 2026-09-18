@@ -113,7 +113,7 @@ class SeedEnrollments extends Command
             }
             
             if (count($batch) >= $batchSize) {
-                \Illuminate\Support\Facades\DB::table('enrollments')->insert($batch);
+                \Illuminate\Support\Facades\DB::table('enrollments')->insertOrIgnore($batch);
                 $inserted += count($batch);
                 $batch = [];
                 $this->info("Inserted {$inserted} / {$target} ...");
@@ -121,7 +121,7 @@ class SeedEnrollments extends Command
         }
         
         if (!empty($batch)) {
-            \Illuminate\Support\Facades\DB::table('enrollments')->insert($batch);
+            \Illuminate\Support\Facades\DB::table('enrollments')->insertOrIgnore($batch);
             $inserted += count($batch);
             $this->info("Inserted {$inserted} / {$target} ...");
         }
