@@ -14,15 +14,38 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EnrollmentController extends Controller
 {
-    private function buildQuery(Request $request)
+    private function buildQuery(Request $request, &$needsJoin = false)
     {
         $query = Enrollment::query()->with(['student', 'course']);
 
+        // Check if we need to join for sorting
+        $sorts = [];
+        if ($request->filled('sort_orders')) {
+            $sortOrders = json_decode($request->sort_orders, true);
+            if (is_array($sortOrders)) $sorts = $sortOrders;
+        } elseif ($request->filled('sort_by')) {
+            $sorts[] = ['col' => $request->sort_by];
+        }
+
+        foreach ($sorts as $s) {
+            $col = $s['col'] ?? '';
+            if (in_array($col, ['nim', 'student_name', 'code', 'course_name'])) {
+                $needsJoin = true;
+                break;
+            }
+        }
+
+        if ($needsJoin) {
+            $query->select('enrollments.*')
+                  ->join('students', 'enrollments.student_id', '=', 'students.id')
+                  ->join('courses', 'enrollments.course_id', '=', 'courses.id');
+        }
+
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('enrollments.status', $request->status);
         }
         if ($request->filled('semester')) {
-            $query->where('semester', $request->semester);
+            $query->where('enrollments.semester', $request->semester);
         }
         if ($request->filled('search')) {
             $search = $request->search;
@@ -31,10 +54,10 @@ class EnrollmentController extends Controller
             
             $query->where(function ($q) use ($studentIds, $courseIds) {
                 if ($studentIds->isNotEmpty()) {
-                    $q->whereIn('student_id', $studentIds);
+                    $q->whereIn('enrollments.student_id', $studentIds);
                 }
                 if ($courseIds->isNotEmpty()) {
-                    $q->orWhereIn('course_id', $courseIds);
+                    $q->orWhereIn('enrollments.course_id', $courseIds);
                 }
                 if ($studentIds->isEmpty() && $courseIds->isEmpty()) {
                     $q->whereRaw('1 = 0');
@@ -62,14 +85,29 @@ class EnrollmentController extends Controller
                             case 'equal': $dbOp = '='; break;
                         }
 
-                        if (in_array($field, ['nim', 'name'])) {
-                            $studentIds = Student::where($field, $dbOp, $dbVal)->pluck('id');
-                            $q->{$logic . 'In'}('student_id', $studentIds);
-                        } elseif (in_array($field, ['code'])) {
-                            $courseIds = Course::where($field, $dbOp, $dbVal)->pluck('id');
-                            $q->{$logic . 'In'}('course_id', $courseIds);
+                        $isStudentField = in_array($field, ['nim', 'name']);
+                        $isCourseField = in_array($field, ['code']);
+
+                        if ($isStudentField || $isCourseField) {
+                            $model = $isStudentField ? Student::class : Course::class;
+                            $fk = $isStudentField ? 'student_id' : 'course_id';
+                            
+                            if ($op === 'in' && is_array($val)) {
+                                $ids = $model::whereIn($field, $val)->pluck('id');
+                            } elseif ($op === 'between' && is_array($val) && count($val) == 2) {
+                                $ids = $model::whereBetween($field, $val)->pluck('id');
+                            } else {
+                                $ids = $model::where($field, $dbOp, $dbVal)->pluck('id');
+                            }
+                            $q->{$logic . 'In'}("enrollments.{$fk}", $ids);
                         } else {
-                            $q->$logic($field, $dbOp, $dbVal);
+                            if ($op === 'in' && is_array($val)) {
+                                $q->{$logic . 'In'}("enrollments.{$field}", $val);
+                            } elseif ($op === 'between' && is_array($val) && count($val) == 2) {
+                                $q->{$logic . 'Between'}("enrollments.{$field}", $val);
+                            } else {
+                                $q->$logic("enrollments.{$field}", $dbOp, $dbVal);
+                            }
                         }
                     }
                 });
@@ -80,17 +118,28 @@ class EnrollmentController extends Controller
 
     public function index(Request $request)
     {
-        $query = $this->buildQuery($request);
+        $needsJoin = false;
+        $query = $this->buildQuery($request, $needsJoin);
 
         // Menghitung summary stats berdasarkan filter yang sedang aktif
         $statsQuery = clone $query;
-        $statusCounts = $statsQuery->select('status', DB::raw('count(*) as total'))
-                                   ->groupBy('status')
+        // Hapus orders dan limit untuk stats
+        $statsQuery->getQuery()->orders = [];
+        $statusCounts = $statsQuery->select('enrollments.status', DB::raw('count(*) as total'))
+                                   ->groupBy('enrollments.status')
                                    ->pluck('total', 'status');
 
-        // Multi-kolom sort: sort_orders=[{"col":"id","dir":"desc"},{"col":"status","dir":"asc"}]
-        // Backward-compat: sort_by & sort_dir (single-column)
-        $allowedSorts = ['academic_year', 'semester', 'status', 'id', 'created_at'];
+        $allowedSorts = [
+            'academic_year' => 'enrollments.academic_year',
+            'semester' => 'enrollments.semester',
+            'status' => 'enrollments.status',
+            'id' => 'enrollments.id',
+            'created_at' => 'enrollments.created_at',
+            'nim' => 'students.nim',
+            'student_name' => 'students.name',
+            'code' => 'courses.code',
+            'course_name' => 'courses.name'
+        ];
 
         if ($request->filled('sort_orders')) {
             $sortOrders = json_decode($request->sort_orders, true);
@@ -98,16 +147,16 @@ class EnrollmentController extends Controller
                 foreach ($sortOrders as $order) {
                     $col = $order['col'] ?? '';
                     $dir = ($order['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
-                    if (in_array($col, $allowedSorts)) {
-                        $query->orderBy($col, $dir);
+                    if (array_key_exists($col, $allowedSorts)) {
+                        $query->orderBy($allowedSorts[$col], $dir);
                     }
                 }
             }
-        } elseif ($request->filled('sort_by') && in_array($request->sort_by, $allowedSorts)) {
+        } elseif ($request->filled('sort_by') && array_key_exists($request->sort_by, $allowedSorts)) {
             $dir = $request->input('sort_dir', 'asc') === 'desc' ? 'desc' : 'asc';
-            $query->orderBy($request->sort_by, $dir);
+            $query->orderBy($allowedSorts[$request->sort_by], $dir);
         } else {
-            $query->orderBy('id', 'desc');
+            $query->orderBy('enrollments.id', 'desc');
         }
 
         $pageSize = $request->input('page_size', 15);
@@ -189,7 +238,8 @@ class EnrollmentController extends Controller
 
     public function export(Request $request)
     {
-        $query = $this->buildQuery($request);
+        $needsJoin = false;
+        $query = $this->buildQuery($request, $needsJoin);
 
         $response = new StreamedResponse(function() use ($query) {
             $handle = fopen('php://output', 'w');
@@ -207,9 +257,7 @@ class EnrollmentController extends Controller
                         $enrollment->status
                     ]);
                 }
-            });
-
-            fclose($handle);
+            }, 'enrollments.id');
         });
 
         $response->headers->set('Content-Type', 'text/csv');
