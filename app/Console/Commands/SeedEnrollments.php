@@ -11,8 +11,8 @@ class SeedEnrollments extends Command
      *
      * @var string
      */
-    protected $signature = 'app:seed-enrollments {--count=5000000 : The number of enrollments to seed}';
-    protected $description = 'Seed the database with a large number of enrollments using bulk insert';
+    protected $signature = 'app:seed-enrollments {--count=5000000 : The number of enrollments to seed (default: 5000000, use 750000 for Aiven free tier)}';
+    protected $description = 'Seed the database with a specific number of enrollments using bulk insert';
 
     public function handle()
     {
