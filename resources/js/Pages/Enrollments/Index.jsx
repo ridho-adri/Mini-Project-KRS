@@ -88,7 +88,8 @@ const SearchableAutocomplete = ({ url, placeholder, renderLabel, valueKey, onSel
                     {results.map(item => (
                         <li key={item[valueKey]}
                             className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-800 dark:text-gray-200"
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                                e.preventDefault(); // Mencegah input kehilangan fokus terlalu cepat
                                 onSelect(item);
                                 setQuery('');
                                 setIsOpen(false);
