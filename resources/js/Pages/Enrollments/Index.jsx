@@ -456,9 +456,31 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                                   <option value="between">Di Antara (Between)</option>
                                   <option value="in">Termasuk Dalam (In Array)</option>
                             </select>
-                            <TextInput className="h-10 flex-1 min-w-[150px] shadow-sm text-sm" value={f.value} placeholder="Nilai filter..." onChange={e => {
-                                const nf = [...advFilters]; nf[i].value = e.target.value; setAdvFilters(nf);
-                            }} />
+                            
+                            {f.field === 'semester' ? (
+                                <select className="h-10 flex-1 min-w-[150px] shadow-sm text-sm border-gray-300 rounded-md" value={f.value} onChange={e => {
+                                    const nf = [...advFilters]; nf[i].value = e.target.value; setAdvFilters(nf);
+                                }}>
+                                    <option value="">Pilih Semester</option>
+                                    <option value="GANJIL">GANJIL</option>
+                                    <option value="GENAP">GENAP</option>
+                                </select>
+                            ) : f.field === 'status' ? (
+                                <select className="h-10 flex-1 min-w-[150px] shadow-sm text-sm border-gray-300 rounded-md" value={f.value} onChange={e => {
+                                    const nf = [...advFilters]; nf[i].value = e.target.value; setAdvFilters(nf);
+                                }}>
+                                    <option value="">Pilih Status</option>
+                                    <option value="DRAFT">DRAFT</option>
+                                    <option value="SUBMITTED">SUBMITTED</option>
+                                    <option value="APPROVED">APPROVED</option>
+                                    <option value="REJECTED">REJECTED</option>
+                                </select>
+                            ) : (
+                                <TextInput className="h-10 flex-1 min-w-[150px] shadow-sm text-sm" value={f.value} placeholder="Nilai filter..." onChange={e => {
+                                    const nf = [...advFilters]; nf[i].value = e.target.value; setAdvFilters(nf);
+                                }} />
+                            )}
+
                             <DangerButton onClick={() => setAdvFilters(advFilters.filter((_, idx) => idx !== i))} className="h-10 px-3 shrink-0">X</DangerButton>
                         </div>
                     ))}
