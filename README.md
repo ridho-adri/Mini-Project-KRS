@@ -10,7 +10,7 @@
 | | URL |
 |--|--|
 | **Repository** | https://github.com/ridho-adri/Mini-Project-KRS |
-| **Aplikasi Live** | https://unbattered-jonathan-stolonate.ngrok-free.dev |
+| **Aplikasi Live** | *(Demonstrasi via Video Lokal - Karena limitasi free-tier DB 5 juta baris)* |
 
 ---
 
@@ -256,22 +256,10 @@ Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk memb
 
 ## 🌐 Panduan Deploy (Production)
 
-### Opsi Rekomendasi: Ngrok (Ekspos Server Lokal)
-Karena database berisi 5 juta baris sangat memakan storage jika dipindah ke cloud berbayar, solusi terbaik untuk presentasi/submission adalah menggunakan **Ngrok** untuk mengekspos aplikasi lokal Anda ke internet.
+### Catatan Deployment (5 Juta Baris)
+Mengingat aplikasi memiliki **5.000.002 baris data** yang membutuhkan storage MySQL sekitar ~2GB, sebagian besar *free-tier cloud hosting* (seperti Render, Railway, PlanetScale) tidak dapat menampungnya secara gratis.
 
-```bash
-# 1. Install Ngrok
-winget install ngrok.ngrok
-
-# 2. Tambahkan Auth Token (Dapatkan di dashboard.ngrok.com)
-ngrok config add-authtoken <TOKEN_ANDA>
-
-# 3. Jalankan tunnel port 8000 (Pastikan `php artisan serve` sedang berjalan)
-ngrok http 8000
-```
-Setelah jalan, Ngrok akan memberikan URL publik seperti `https://abcd-123.ngrok-free.app` yang bisa Anda cantumkan di pengumpulan.
-
-**Catatan:** Tambahkan URL tersebut di `.env` lokal Anda: `APP_URL=https://abcd-123.ngrok-free.app` jika terjadi masalah pada URL aset.
+Oleh karena itu, submission ini disajikan berupa **Source Code + Rekaman Video** yang mendemonstrasikan bahwa sistem berjalan dengan 100% fungsional (termasuk pagination, multi-sort, dan filter) langsung di atas 5 juta baris data dengan sangat cepat di lingkungan lokal.
 
 ### VPS / Shared Hosting Manual
 ```bash
