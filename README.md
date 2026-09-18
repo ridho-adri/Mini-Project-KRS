@@ -10,7 +10,7 @@
 | | URL |
 |--|--|
 | **Repository** | https://github.com/ridho-adri/Mini-Project-KRS |
-| **Aplikasi Live** | *(diisi setelah deploy)* |
+| **Aplikasi Live** | https://unbattered-jonathan-stolonate.ngrok-free.dev |
 
 ---
 
