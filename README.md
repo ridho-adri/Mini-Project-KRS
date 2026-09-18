@@ -10,7 +10,7 @@
 | | URL |
 |--|--|
 | **Repository** | https://github.com/ridho-adri/Mini-Project-KRS |
-| **Aplikasi Live** | *(Demonstrasi via Video Lokal - Karena limitasi free-tier DB 5 juta baris)* |
+| **Aplikasi Live** | *(diisi dengan URL Railway Anda setelah generate domain)* |
 
 ---
 
@@ -256,10 +256,18 @@ Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk memb
 
 ## 🌐 Panduan Deploy (Production)
 
-### Catatan Deployment (5 Juta Baris)
-Mengingat aplikasi memiliki **5.000.002 baris data** yang membutuhkan storage MySQL sekitar ~2GB, sebagian besar *free-tier cloud hosting* (seperti Render, Railway, PlanetScale) tidak dapat menampungnya secara gratis.
+### Opsi Rekomendasi: Railway
+Proyek ini sudah dikonfigurasi untuk auto-deploy di Railway (menggunakan `railway.toml`).
 
-Oleh karena itu, submission ini disajikan berupa **Source Code + Rekaman Video** yang mendemonstrasikan bahwa sistem berjalan dengan 100% fungsional (termasuk pagination, multi-sort, dan filter) langsung di atas 5 juta baris data dengan sangat cepat di lingkungan lokal.
+1. **Buat Akun & Login Railway**
+   - Daftar di railway.app, lalu hubungkan repo GitHub Anda.
+2. **Setup Database**
+   - Tambahkan plugin MySQL di project Railway Anda.
+3. **Environment Variables**
+   - Tambahkan variabel koneksi (menggunakan referensi variabel MySQL otomatis di Railway).
+   - Pastikan `APP_ENV=production` dan `APP_KEY` sudah terisi.
+4. **Jalankan Seeder 5 Juta Baris (Opsional)**
+   - Eksekusi perintah `php artisan app:seed-enrollments --count=5000000` di tab *Deployments > Execute Command* untuk mengisi data di server cloud.
 
 ### VPS / Shared Hosting Manual
 ```bash
