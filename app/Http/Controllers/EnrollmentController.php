@@ -238,6 +238,7 @@ class EnrollmentController extends Controller
 
     public function export(Request $request)
     {
+        set_time_limit(0); // Prevent PHP timeout for huge exports
         $needsJoin = false;
         $query = $this->buildQuery($request, $needsJoin);
 
