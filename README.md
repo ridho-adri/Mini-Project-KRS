@@ -263,11 +263,14 @@ Proyek ini sudah dikonfigurasi untuk auto-deploy di Railway (menggunakan `railwa
    - Daftar di railway.app, lalu hubungkan repo GitHub Anda.
 2. **Setup Database**
    - Tambahkan plugin MySQL di project Railway Anda.
-3. **Environment Variables**
-   - Tambahkan variabel koneksi (menggunakan referensi variabel MySQL otomatis di Railway).
+3. **Environment Variables Penting**
+   - Tambahkan variabel koneksi DB dari tab Settings MySQL (jika menggunakan docker image, gunakan *TCP Proxy*).
    - Pastikan `APP_ENV=production` dan `APP_KEY` sudah terisi.
-4. **Jalankan Seeder 5 Juta Baris (Opsional)**
-   - Eksekusi perintah `php artisan app:seed-enrollments --count=5000000` di tab *Deployments > Execute Command* untuk mengisi data di server cloud.
+   - Wajib tambahkan `APP_URL` dan `ASSET_URL` (berisi domain https publik dari Railway) untuk menghindari *Mixed Content Error* karena proxy SSL.
+4. **Jalankan Seeder 5 Juta Baris (Remote dari Lokal)**
+   - Karena keterbatasan eksekusi di *free-tier* Railway (proses di-kill jika lebih dari 60 detik), seeder 5 juta baris (yang memakan waktu 4-5 menit) dijalankan secara *remote* dari lokal.
+   - Arahkan `DB_HOST` dan port di `.env` lokal ke alamat **Public TCP Proxy MySQL** milik Railway.
+   - Jalankan `php artisan app:seed-enrollments --count=5000000` di komputer lokal Anda. Data akan terkirim langsung ke cloud!
 
 ### VPS / Shared Hosting Manual
 ```bash
