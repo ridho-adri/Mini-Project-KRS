@@ -10,7 +10,7 @@
 | | URL |
 |--|--|
 | **Repository** | https://github.com/ridho-adri/Mini-Project-KRS |
-| **Aplikasi Live** | *(diisi dengan URL Railway Anda setelah generate domain)* |
+| **Aplikasi Live** | https://mini-project-krs-production-2da5.up.railway.app |
 
 ---
 
@@ -254,23 +254,23 @@ Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk memb
 
 ---
 
-## 🌐 Panduan Deploy (Production)
+## 🌐 Deployment & Keterbatasan Free-Tier (Railway + Aiven)
 
-### Opsi Rekomendasi: Railway
-Proyek ini sudah dikonfigurasi untuk auto-deploy di Railway (menggunakan `railway.toml`).
+Sebagai alternatif yang sangat stabil untuk mode gratis (Free Tier), kita menggunakan pemisahan infrastruktur:
+1. **Database:** Aiven MySQL (Limit Storage 1 GB)
+2. **Web Server:** Railway Web Service (via Nixpacks)
 
-1. **Buat Akun & Login Railway**
-   - Daftar di railway.app, lalu hubungkan repo GitHub Anda.
-2. **Setup Database**
-   - Tambahkan plugin MySQL di project Railway Anda.
-3. **Environment Variables Penting**
-   - Tambahkan variabel koneksi DB dari tab Settings MySQL (jika menggunakan docker image, gunakan *TCP Proxy*).
-   - Pastikan `APP_ENV=production` dan `APP_KEY` sudah terisi.
-   - Wajib tambahkan `APP_URL` dan `ASSET_URL` (berisi domain https publik dari Railway) untuk menghindari *Mixed Content Error* karena proxy SSL.
-4. **Jalankan Seeder 5 Juta Baris (Remote dari Lokal)**
-   - Karena keterbatasan eksekusi di *free-tier* Railway (proses di-kill jika lebih dari 60 detik), seeder 5 juta baris (yang memakan waktu 4-5 menit) dijalankan secara *remote* dari lokal.
-   - Arahkan `DB_HOST` dan port di `.env` lokal ke alamat **Public TCP Proxy MySQL** milik Railway.
-   - Jalankan `php artisan app:seed-enrollments --count=5000000` di komputer lokal Anda. Data akan terkirim langsung ke cloud!
+**Fakta Pengujian Lokal vs Online:**
+- **Lokal (Berhasil 100%):** Pada mesin localhost (laptop), perintah `php artisan app:seed-enrollments` (default 5.000.000 data) telah **terbukti berhasil dijalankan dan di-*load* dengan lancar** dalam waktu kurang dari 2 menit (*bulk insert*). UI pencarian dan navigasi merespon secara *real-time* tanpa hambatan.
+- **Online (Aiven Free Tier):** Mengingat Aiven MySQL hanya memberikan kapasitas gratis maksimal 1 GB, memaksakan *seed* 5 juta baris (2 GB+) akan membuat server Aiven mogok (*read-only* karena disk penuh). Oleh karena itu, untuk kebutuhan demo online, disarankan mengatur jumlah baris lebih kecil (contoh: 750.000).
+
+**Command yang dijalankan:**
+* **Di Localhost (untuk 5 Juta Data):** 
+  `php artisan app:seed-enrollments`
+* **Di Produksi Online (untuk 750 Ribu Data):** 
+  `php artisan app:seed-enrollments --count=750000`
+
+Lihat `MIGRATION_NOTES.md` untuk opsi melakukan *dump* manual dari lokal ke Aiven MySQL.
 
 ### VPS / Shared Hosting Manual
 ```bash
