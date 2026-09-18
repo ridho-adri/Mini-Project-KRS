@@ -86,18 +86,20 @@ class EnrollmentController extends Controller
                         }
 
                         $isStudentField = in_array($field, ['nim', 'name']);
-                        $isCourseField = in_array($field, ['code']);
+                        $isCourseField = in_array($field, ['code', 'course_name']);
 
                         if ($isStudentField || $isCourseField) {
                             $model = $isStudentField ? Student::class : Course::class;
                             $fk = $isStudentField ? 'student_id' : 'course_id';
                             
+                            $modelField = $field === 'course_name' ? 'name' : $field;
+
                             if ($op === 'in' && is_array($val)) {
-                                $ids = $model::whereIn($field, $val)->pluck('id');
+                                $ids = $model::whereIn($modelField, $val)->pluck('id');
                             } elseif ($op === 'between' && is_array($val) && count($val) == 2) {
-                                $ids = $model::whereBetween($field, $val)->pluck('id');
+                                $ids = $model::whereBetween($modelField, $val)->pluck('id');
                             } else {
-                                $ids = $model::where($field, $dbOp, $dbVal)->pluck('id');
+                                $ids = $model::where($modelField, $dbOp, $dbVal)->pluck('id');
                             }
                             $q->{$logic . 'In'}("enrollments.{$fk}", $ids);
                         } else {

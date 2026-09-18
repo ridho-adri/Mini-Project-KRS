@@ -438,11 +438,14 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                             <select value={f.field} onChange={e => {
                                 const nf = [...advFilters]; nf[i].field = e.target.value; setAdvFilters(nf);
                             }} className="border-gray-300 rounded-md h-10 px-2 text-sm shadow-sm flex-1 min-w-[120px]">
-                                <option value="">Pilih Kolom</option>
-                                <option value="nim">NIM</option>
-                                <option value="name">Nama Mahasiswa</option>
-                                <option value="code">Kode MK</option>
-                                <option value="academic_year">Tahun Ajaran</option>
+                                  <option value="">Pilih Kolom</option>
+                                  <option value="nim">NIM</option>
+                                  <option value="name">Nama Mahasiswa</option>
+                                  <option value="code">Kode MK</option>
+                                  <option value="course_name">Nama MK</option>
+                                  <option value="academic_year">Tahun Ajaran</option>
+                                  <option value="semester">Semester</option>
+                                  <option value="status">Status</option>
                             </select>
                             <select value={f.operator} onChange={e => {
                                 const nf = [...advFilters]; nf[i].operator = e.target.value; setAdvFilters(nf);
