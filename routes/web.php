@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\EnrollmentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -31,7 +30,3 @@ Route::get('/courses/search', function (Request $request) {
         ->orWhere('name', 'like', "{$q}%")
         ->take(10)->get();
 });
-
-// (Opsional) Membiarkan auth bawaan Breeze jika ingin dipakai untuk keperluan lain,
-// tapi kita tidak memerlukannya untuk tes teknis ini.
-require __DIR__.'/auth.php';
