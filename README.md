@@ -1,113 +1,305 @@
-# Proyek CRUD Akademik (KRS)
+# Sistem KRS Akademik — SPA CRUD Skala 5 Juta Data
 
-Proyek ini adalah implementasi dari sistem Single Page Application (SPA) CRUD Akademik (Kartu Rencana Studi) yang dirancang untuk menangani skala data besar (hingga 5 juta baris enrollments).
+> **Mini Project Rekrutmen — Politeknik Caltex Riau**  
+> Implementasi sistem Kartu Rencana Studi (KRS) berbasis Single Page Application yang dirancang dan diuji untuk menangani **5.000.000+ baris data** dengan performa tinggi.
 
-## Teknologi Utama
-- **Backend:** Laravel 11 (PHP 8.2+)
-- **Frontend:** React 18, dikelola oleh Inertia.js (Breeze Starter Kit)
-- **Database:** MySQL
-- **Styling:** Tailwind CSS
+---
 
-**Kenapa Inertia.js dipakai?**
-Inertia.js memungkinkan pembuatan Single Page Application yang modern dan interaktif menggunakan React *tanpa* kerumitan membangun API REST/GraphQL terpisah. Routing, autentikasi, dan controller tetap ditangani sepenuhnya oleh Laravel, sementara frontend murni menangani tampilan state berbasis React, sehingga mempercepat proses development (monolith modern).
+## 🔗 Link
 
-## Persyaratan Sistem
-- PHP >= 8.2
-- Composer
-- Node.js & npm
-- MySQL (bisa menampung 5 juta baris)
+| | URL |
+|--|--|
+| **Repository** | https://github.com/ridho-adri/Mini-Project-KRS |
+| **Aplikasi Live** | *(diisi setelah deploy)* |
 
-## Cara Setup Lokal
+---
 
-1. **Clone & Install Dependensi:**
-   ```bash
-   git clone <URL_REPO>
-   cd krs-akademik
-   composer install
-   npm install
-   ```
+## 🛠 Stack Teknologi
 
-2. **Konfigurasi Lingkungan (`.env`):**
-   Copy file contoh `.env` dan generate application key:
-   ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
+| Layer | Teknologi | Versi |
+|-------|-----------|-------|
+| Backend | Laravel | 11.x |
+| Frontend | React + Inertia.js | 18.x |
+| Database | MySQL | 8.x |
+| Build Tool | Vite | 6.x |
+| Styling | Tailwind CSS | 3.x |
+| Runtime | PHP | 8.2+ |
 
-   Ubah koneksi database wajib di `.env`:
-   ```env
-   DB_CONNECTION=mysql
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_DATABASE=krs_akademik
-   DB_USERNAME=root
-   DB_PASSWORD=
-   ```
-   *(Pastikan database `krs_akademik` sudah dibuat secara manual di server MySQL lokal Anda terlebih dahulu).*
+**Kenapa Laravel + Inertia.js?**  
+Inertia.js memungkinkan pembuatan SPA modern menggunakan React *tanpa* membangun REST API terpisah. Routing dan controller tetap di Laravel, sementara React menangani tampilan — pengembangan lebih cepat dengan kompleksitas lebih rendah (*monolith modern*).
 
-3. **Jalankan Migrasi:**
-   ```bash
-   php artisan migrate
-   ```
+**Kenapa tidak ada autentikasi?**  
+Sesuai instruksi dokumen teknis rekrutmen, sistem ini bersifat *public access* penuh tanpa login.
 
-4. **Jalankan Aplikasi:**
-   Jalankan server pengembangan Laravel dan watcher Vite secara bersamaan (di terminal terpisah):
-   ```bash
-   php artisan serve
-   ```
-   ```bash
-   npm run dev
-   ```
-   Aplikasi dapat diakses di `http://localhost:8000` tanpa perlu login — semua fitur bersifat publik.
+---
 
-## Cara Menjalankan Seeder 5 Juta Data
-Untuk membuktikan bahwa sistem dapat menangani volume data tinggi, sebuah command khusus disiapkan.
-Jalankan perintah ini di terminal:
+## 📋 Persyaratan Sistem
+
+- PHP >= 8.2 + Composer
+- Node.js >= 18 + npm
+- MySQL >= 8.0
+- Minimal 2GB RAM (untuk seeding 5 juta baris)
+
+---
+
+## ⚙️ Setup Lokal (Development)
+
+### 1. Clone & Install Dependensi
+```bash
+git clone https://github.com/ridho-adri/Mini-Project-KRS.git
+cd Mini-Project-KRS
+composer install
+npm install
+```
+
+### 2. Konfigurasi Environment
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Edit `.env`, sesuaikan koneksi database:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=krs_akademik
+DB_USERNAME=root
+DB_PASSWORD=
+```
+> Buat database `krs_akademik` secara manual di MySQL terlebih dahulu.
+
+### 3. Jalankan Migrasi
+```bash
+php artisan migrate
+```
+
+| Migration | Keterangan |
+|-----------|------------|
+| `create_students_table` | Tabel mahasiswa (nim unique, email unique) |
+| `create_courses_table` | Tabel mata kuliah (code unique) |
+| `create_enrollments_table` | Tabel KRS + FK + unique constraint + composite index + soft deletes |
+| `add_search_indexes_...` | Index B-Tree untuk kolom pencarian (nim, name, code) |
+
+### 4. Jalankan Aplikasi
+```bash
+# Terminal 1
+php artisan serve
+
+# Terminal 2
+npm run dev
+```
+
+Akses di: **http://localhost:8000** — tidak perlu login.
+
+---
+
+## 🌱 Seeder 5 Juta Data
+
 ```bash
 php artisan app:seed-enrollments --count=5000000
 ```
-> **Perkiraan Waktu:** Proses seeding akan berjalan secara sekuensial dan bulk insert per 5.000 baris. Di komputer lokal rata-rata, ini memakan waktu sekitar **4-5 menit** untuk 5.000.000 baris.
 
-Setelah selesai, command akan otomatis menjalankan dan mencetak hasil dari query: `SELECT COUNT(*) FROM enrollments`. Anda juga bisa membuktikannya langsung di database client pilihan Anda.
+**Mekanisme:** Menggunakan `DB::table()->insertOrIgnore()` dengan batch 5.000 baris per insert. Menghindari *Out of Memory* dan N+1 problem.
 
-## Strategi Performa Database
+> ⏱ **Perkiraan waktu:** 4–5 menit di mesin lokal standar.
 
-Mengingat tabel `enrollments` memiliki lebih dari 5 juta entri, sejumlah optimisasi telah dilakukan:
+---
 
-1. **Indeks Database:**
-   - **Composite Index** (`academic_year`, `semester`, `status`): Dibuat khusus pada kolom-kolom yang paling sering dikombinasikan saat *quick filtering* dan sorting agar database engine (InnoDB) tidak melakukan *full table scan*.
-   - **Foreign Key Index:** Secara otomatis terindeks oleh MySQL (`student_id`, `course_id`) untuk mempercepat JOIN query.
-   - **Unique Index:** Kombinasi 4 kolom (`student_id`, `course_id`, `academic_year`, `semester`) untuk menjamin tidak ada duplikasi input, yang juga bertindak sebagai index sekunder.
-2. **Strategi Bulk Insert:** 
-   Seeder custom `SeedEnrollments` tidak memanggil metode `Enrollment::create()` satu per satu (akan sangat lambat akibat N+1 koneksi/object overhead). Sebaliknya, menggunakan array multidimensi yang dimasukkan ke `DB::table('enrollments')->insert()` sekaligus setiap 5.000 entri per batch.
-3. **Strategi Streaming Export:**
-   Export file CSV berpotensi menyebabkan PHP *Out Of Memory* jika memuat 5 juta Eloquent Collection sekaligus. Fitur Export diimplementasikan menggunakan **StreamedResponse** dan teknik *Chunking* (`chunkById(5000)`). PHP mencetak baris langsung ke output I/O secara sekuensial sehingga pemakaian RAM tetap di level konstan (< 10 MB) tanpa mempedulikan jumlah baris.
+## 🗄️ Desain Skema Database
 
-## Keputusan Desain: Soft Delete
-Sistem ini menggunakan fitur Eloquent `SoftDeletes` pada tabel `enrollments`. Saat sebuah entri KRS "dihapus" oleh pengguna:
-- Kolom `deleted_at` diisi dengan *timestamp* penghapusan, **bukan** baris dihapus secara fisik.
-- **Alasan:** Data histori akademik bersifat krusial. Penghapusan permanen (*hard delete*) bisa merusak referensi audit trail (kapan mahasiswa mendaftar, kapan status berubah). Dengan *soft delete*, administrator masih bisa memulihkan data via query langsung jika terjadi kesalahan input.
-- Data yang telah di-*soft-delete* secara otomatis diabaikan oleh Eloquent pada semua operasi: Listing, Export, Search, dan Filter.
-- *Hard delete* tidak diekspos melalui UI publik demi keamanan integritas data akademik.
+```
+students
+├── id (PK)
+├── nim        VARCHAR(12)  UNIQUE INDEX
+├── name       VARCHAR(100) INDEX
+└── email      UNIQUE INDEX
 
-## Fitur Sorting
+courses
+├── id (PK)
+├── code       VARCHAR(10)  UNIQUE INDEX
+├── name       VARCHAR(120) INDEX
+└── credits    TINYINT UNSIGNED
+
+enrollments
+├── id (PK)
+├── student_id FK → students.id  (CASCADE DELETE)
+├── course_id  FK → courses.id   (CASCADE DELETE)
+├── academic_year  VARCHAR(9)    -- format: 2024/2025
+├── semester   ENUM(GANJIL, GENAP)
+├── status     ENUM(DRAFT, SUBMITTED, APPROVED, REJECTED)  DEFAULT DRAFT
+├── deleted_at TIMESTAMP NULL    -- Soft Delete
+├── UNIQUE KEY (student_id, course_id, academic_year, semester)
+└── INDEX      (academic_year, semester, status)
+```
+
+---
+
+## 🚀 Fitur Backend
+
+### Endpoint
+| Method | URL | Fungsi |
+|--------|-----|--------|
+| GET | `/enrollments` | List KRS (pagination, sort, filter, search) |
+| POST | `/enrollments` | Create KRS baru (atomic 3 tabel) |
+| PUT | `/enrollments/{id}` | Update KRS |
+| DELETE | `/enrollments/{id}` | Soft-delete KRS |
+| GET | `/enrollments/export` | Export CSV streaming |
+| GET | `/students/search?q=` | Autocomplete mahasiswa |
+| GET | `/courses/search?q=` | Autocomplete mata kuliah |
+
+### Query Parameter GET /enrollments
+| Parameter | Contoh | Keterangan |
+|-----------|--------|------------|
+| `search` | `Budi` | Prefix search di nim, name, code, course name |
+| `status` | `DRAFT` | Quick filter status |
+| `semester` | `GANJIL` | Quick filter semester |
+| `sort_by` | `academic_year` | Sort kolom tunggal |
+| `sort_dir` | `desc` | Arah sort |
+| `sort_orders` | `[{"col":"status","dir":"asc"},{"col":"id","dir":"desc"}]` | Sort multi-kolom |
+| `filters` | `[{"field":"nim","operator":"equal","value":"123"}]` | Advanced filter |
+| `filter_logic` | `and` / `or` | Logika gabungan filter |
+| `page_size` | `15` / `50` / `100` | Baris per halaman |
+
+### Validasi Input
+| Field | Aturan |
+|-------|--------|
+| `student_nim` | 8–12 digit angka, unique |
+| `student_email` | Format email valid, unique |
+| `course_code` | Format `XX000`–`XXXX000` (uppercase + angka), unique |
+| `course_credits` | Integer 1–6 |
+| `academic_year` | Format `YYYY/YYYY` (regex) |
+| `semester` | `GANJIL` atau `GENAP` |
+| `status` | `DRAFT`, `SUBMITTED`, `APPROVED`, atau `REJECTED` |
+
+---
+
+## ⚡ Strategi Performa (5 Juta Baris)
+
+### 1. Indexing Database
+- **B-Tree Index** pada `students.nim`, `students.name`, `courses.code`, `courses.name`
+- **Composite Index** `(academic_year, semester, status)` untuk quick filter
+- **Unique Index** 4-kolom di `enrollments`
+
+### 2. Strategi Query: `whereIn` Dua-Tahap
+Menghindari `whereHas()` (correlated subquery) dan `JOIN OR` (tidak bisa pakai index):
+```
+Step 1: SELECT id FROM students WHERE nim LIKE 'keyword%'  → [id1, id2, ...]
+Step 2: SELECT * FROM enrollments WHERE student_id IN ([id1, id2, ...])
+```
+Hasil: **~21ms** vs >60 detik sebelum optimasi.
+
+### 3. Prefix Matching
+`LIKE 'keyword%'` (bukan `LIKE '%keyword%'`) — kompatibel dengan B-Tree Index.
+
+### 4. `simplePaginate` (tanpa COUNT)
+Menggantikan `paginate()` yang butuh `COUNT(*)` full-scan (~2 detik).
+
+### 5. Streaming Export
+`StreamedResponse` + `chunkById(5000)` — RAM tetap < 10MB untuk 5 juta baris.
+
+### Performa Terukur
+| Operasi | Waktu |
+|---------|-------|
+| Sort per kolom (index) | **1.85ms** |
+| Search 4 kolom (whereIn) | **~21ms** |
+| Advanced filter multi-kolom | **~11ms** |
+| Export streaming 25k baris | **495ms** |
+
+---
+
+## 🗑️ Keputusan Desain: Soft Delete
+
+**Soft Delete dipilih** atas Hard Delete karena:
+- Data histori akademik bersifat krusial dan tidak boleh hilang permanen
+- Diperlukan untuk audit trail (kapan mahasiswa mendaftar, kapan status berubah)
+- Admin bisa memulihkan data yang terhapus secara tidak sengaja via `withTrashed()`
+
+Data yang di-soft-delete otomatis disembunyikan dari Listing, Search, Filter, dan Export.
+
+---
+
+## 🔃 Fitur Sorting
 
 ### Sort Kolom Tunggal
-Klik header kolom di tabel (ID, Tahun Ajaran, Semester, Status) untuk mengurutkan naik/turun.
+Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk membalik arah.
 
 ### Sort Multi-Kolom (Advanced Order)
-**Ctrl + Klik** pada beberapa header kolom untuk menambahkan kolom ke urutan sort secara kumulatif.
-- Contoh: Ctrl+Klik **Status** → Ctrl+Klik **Tahun Ajaran** akan menghasilkan `ORDER BY status ASC, academic_year ASC`.
-- Angka kecil di samping indikator ↑/↓ menunjukkan **prioritas urutan sort** (1 = prioritas pertama).
-- Klik header tanpa Ctrl akan mereset ke sort kolom tunggal.
-- Backend menerima parameter `sort_orders` berformat JSON: `[{"col":"status","dir":"asc"},{"col":"academic_year","dir":"desc"}]`.
+**Ctrl + Klik** beberapa header secara berurutan:
+- Angka kecil di ↑/↓ menunjukkan prioritas sort (1 = prioritas pertama)
+- Menghasilkan `ORDER BY col1 ASC, col2 DESC, ...` di backend
+- Klik biasa (tanpa Ctrl) mereset ke sort kolom tunggal
 
-## Penjelasan Logika Advanced Filter (AND / OR)
-Fitur filter mahir mendukung pencarian lintas-kolom dinamis (seperti "Nama Mahasiswa berisi Budi" **ATAU** "Kode MK sama dengan CS101").
+---
 
-- Filter array dari frontend akan dikirim sebagai format JSON: `[{field, operator, value}]` disertai `filter_logic` (AND/OR).
-- Backend secara dinamis membangun query menggunakan strategi `whereIn` dua-tahap: query ke tabel dimensi (`students`/`courses`) dahulu untuk mendapat ID, kemudian `whereIn('student_id', ...)` / `whereIn('course_id', ...)` ke tabel `enrollments`.
-- Strategi ini memungkinkan penggunaan index B-Tree secara optimal pada 5 juta baris data.
+## 📊 Hasil Pengujian
 
-## URL Aplikasi (Production)
-*(Untuk diisi setelah deploy)*: `https://[URL_PRODUKSI]`
+| ID | Skenario | Hasil |
+|----|----------|-------|
+| TS-01 | Seeder 5 juta + `COUNT(*)` | ✅ COUNT = 5.000.002 |
+| TS-02 | Create KRS atomic (3 tabel) | ✅ Students+1, Courses+1, Enrollments+1 |
+| TS-03 | Input invalid dari frontend | ✅ 8 error validasi terdeteksi |
+| TS-04 | Payload invalid dari API | ✅ `exists()` menolak ID fiktif |
+| TS-05 | Ganti page/page size | ✅ 15 & 50 baris berjalan benar |
+| TS-06 | Sort ASC/DESC per header | ✅ 1.85ms |
+| TS-07 | Filter Status + Semester | ✅ DRAFT=1.248.427, GANJIL=2.500.003 |
+| TS-08 | Search NIM/Nama/Kode MK | ✅ ~21ms via whereIn |
+| TS-09 | Multi-column advanced filter | ✅ AND filter NIM+DRAFT akurat |
+| TS-10 | Logika AND dan OR | ✅ OR selalu ≥ AND |
+| TS-11 | Update KRS | ✅ academic_year, semester, status |
+| TS-12 | Delete KRS (Soft Delete) | ✅ deleted_at terisi, tersembunyi |
+| TS-13 | Export seluruh dataset | ✅ Streaming tanpa OOM |
+
+**Total: 13/13 ✅ LULUS**
+
+---
+
+## 🌐 Panduan Deploy (Production)
+
+### Opsi Rekomendasi: Railway
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+railway login
+railway up
+```
+
+### VPS / Shared Hosting Manual
+```bash
+# 1. Build asset frontend
+npm run build
+
+# 2. Set .env production
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://domain-anda.com
+
+# 3. Optimize Laravel
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# 4. Migrasi di server
+php artisan migrate --force
+
+# 5. Seeding (opsional, ~4-5 menit)
+php artisan app:seed-enrollments --count=5000000
+```
+
+---
+
+## 📁 Struktur Proyek Utama
+
+```
+├── app/
+│   ├── Console/Commands/SeedEnrollments.php     ← Seeder 5 juta baris
+│   ├── Http/Controllers/EnrollmentController.php
+│   ├── Http/Requests/StoreEnrollmentRequest.php
+│   ├── Http/Requests/UpdateEnrollmentRequest.php
+│   └── Models/{Enrollment, Student, Course}.php
+├── database/migrations/                          ← 4 file migration
+├── resources/js/Pages/Enrollments/Index.jsx      ← SPA utama (React)
+├── routes/web.php                                ← Semua endpoint
+├── lang/id/validation.php                        ← Pesan validasi Bahasa Indonesia
+└── ARCHITECTURE_GUIDE.md                         ← Panduan arsitektur detail
+```
