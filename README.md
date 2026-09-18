@@ -256,13 +256,22 @@ Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk memb
 
 ## 🌐 Panduan Deploy (Production)
 
-### Opsi Rekomendasi: Railway
+### Opsi Rekomendasi: Ngrok (Ekspos Server Lokal)
+Karena database berisi 5 juta baris sangat memakan storage jika dipindah ke cloud berbayar, solusi terbaik untuk presentasi/submission adalah menggunakan **Ngrok** untuk mengekspos aplikasi lokal Anda ke internet.
+
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
-railway login
-railway up
+# 1. Install Ngrok
+winget install ngrok.ngrok
+
+# 2. Tambahkan Auth Token (Dapatkan di dashboard.ngrok.com)
+ngrok config add-authtoken <TOKEN_ANDA>
+
+# 3. Jalankan tunnel port 8000 (Pastikan `php artisan serve` sedang berjalan)
+ngrok http 8000
 ```
+Setelah jalan, Ngrok akan memberikan URL publik seperti `https://abcd-123.ngrok-free.app` yang bisa Anda cantumkan di pengumpulan.
+
+**Catatan:** Tambahkan URL tersebut di `.env` lokal Anda: `APP_URL=https://abcd-123.ngrok-free.app` jika terjadi masalah pada URL aset.
 
 ### VPS / Shared Hosting Manual
 ```bash
