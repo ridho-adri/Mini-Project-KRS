@@ -357,9 +357,9 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                             <thead className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                                 <tr>
                                 <th className="p-3 font-semibold border-b dark:border-gray-600 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition select-none" onClick={(e) => handleSort('id', e)} title="Ctrl+Click untuk sort multi-kolom">ID{getSortIndicator('id')}</th>
-                                    <th className="p-3 font-semibold border-b dark:border-gray-600">NIM</th>
-                                    <th className="p-3 font-semibold border-b dark:border-gray-600">Nama Mahasiswa</th>
-                                    <th className="p-3 font-semibold border-b dark:border-gray-600">Mata Kuliah</th>
+                                <th className="p-3 font-semibold border-b dark:border-gray-600 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition select-none" onClick={(e) => handleSort('nim', e)} title="Ctrl+Click untuk sort multi-kolom">NIM{getSortIndicator('nim')}</th>
+                                <th className="p-3 font-semibold border-b dark:border-gray-600 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition select-none" onClick={(e) => handleSort('student_name', e)} title="Ctrl+Click untuk sort multi-kolom">Nama Mahasiswa{getSortIndicator('student_name')}</th>
+                                <th className="p-3 font-semibold border-b dark:border-gray-600 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition select-none" onClick={(e) => handleSort('code', e)} title="Ctrl+Click untuk sort multi-kolom">Mata Kuliah{getSortIndicator('code')}</th>
                                     <th className="p-3 font-semibold border-b dark:border-gray-600 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition select-none" onClick={(e) => handleSort('academic_year', e)} title="Ctrl+Click untuk sort multi-kolom">Tahun Ajaran{getSortIndicator('academic_year')}</th>
                                     <th className="p-3 font-semibold border-b dark:border-gray-600 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition select-none" onClick={(e) => handleSort('semester', e)} title="Ctrl+Click untuk sort multi-kolom">Semester{getSortIndicator('semester')}</th>
                                     <th className="p-3 font-semibold border-b dark:border-gray-600 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition select-none" onClick={(e) => handleSort('status', e)} title="Ctrl+Click untuk sort multi-kolom">Status{getSortIndicator('status')}</th>
@@ -447,9 +447,11 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                             <select value={f.operator} onChange={e => {
                                 const nf = [...advFilters]; nf[i].operator = e.target.value; setAdvFilters(nf);
                             }} className="border-gray-300 rounded-md h-10 px-2 text-sm shadow-sm flex-1 min-w-[120px]">
-                                <option value="equal">Sama Dengan (=)</option>
-                                <option value="contains">Mengandung</option>
-                                <option value="startsWith">Berawalan</option>
+                                  <option value="equal">Sama Dengan (=)</option>
+                                  <option value="contains">Mengandung (Contains)</option>
+                                  <option value="startsWith">Berawalan (Starts With)</option>
+                                  <option value="between">Di Antara (Between)</option>
+                                  <option value="in">Termasuk Dalam (In Array)</option>
                             </select>
                             <TextInput className="h-10 flex-1 min-w-[150px] shadow-sm text-sm" value={f.value} placeholder="Nilai filter..." onChange={e => {
                                 const nf = [...advFilters]; nf[i].value = e.target.value; setAdvFilters(nf);
