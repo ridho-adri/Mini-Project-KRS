@@ -13,7 +13,7 @@ export default function Toast({ message, type = 'success', onClose }) {
 
     if (!message) return null;
 
-    const baseClasses = "fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium transition-all duration-300 z-50 flex items-center space-x-2";
+    const baseClasses = "fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium transition-all duration-300 z-[60] flex items-center space-x-2";
     const typeClasses = {
         success: "bg-green-600",
         error: "bg-red-600",

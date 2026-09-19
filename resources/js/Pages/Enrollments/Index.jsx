@@ -471,6 +471,13 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
             <Modal show={isFormOpen} onClose={() => setIsFormOpen(false)}>
                 <form onSubmit={submitForm} className="p-6 text-gray-900 dark:text-gray-100 max-h-[85vh] overflow-y-auto">
                     <h2 className="text-xl font-bold mb-4 border-b pb-2">{editingId ? 'Ubah Data KRS' : 'Tambah KRS Baru'}</h2>
+                    
+                    {errors.general && (
+                        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+                            <strong className="font-bold">Gagal! </strong>
+                            <span className="block sm:inline">{errors.general}</span>
+                        </div>
+                    )}
 
                     {!editingId && (
                         <>
