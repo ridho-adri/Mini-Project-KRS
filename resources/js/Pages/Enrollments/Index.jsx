@@ -3,9 +3,14 @@ import { Head, router, usePage, useForm } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
+import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
+import StatusBadge from '@/Components/StatusBadge';
+import SemesterBadge from '@/Components/SemesterBadge';
+import StatCard from '@/Components/StatCard';
+import Toast from '@/Components/Toast';
 
 function useDebounce(value, delay) {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -237,38 +242,18 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
         }
     };
 
-    const deleteItem = (id) => {
-        if (confirm("Apakah Anda yakin ingin menghapus data KRS ini?")) {
-            router.delete(route('enrollments.destroy', id), { preserveState: true });
+    const [confirmingDelete, setConfirmingDelete] = useState(null);
+
+    const deleteItem = () => {
+        if (confirmingDelete) {
+            router.delete(route('enrollments.destroy', confirmingDelete.id), { 
+                preserveState: true,
+                onSuccess: () => setConfirmingDelete(null)
+            });
         }
     };
 
-    // Rendering Badges
-    const renderStatusBadge = (statusValue) => {
-        const styles = {
-            'DRAFT': 'bg-gray-200 text-gray-800',
-            'SUBMITTED': 'bg-blue-100 text-blue-800',
-            'APPROVED': 'bg-green-100 text-green-800',
-            'REJECTED': 'bg-red-100 text-red-800'
-        };
-        return (
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${styles[statusValue] || 'bg-gray-100 text-gray-800'}`}>
-                {statusValue}
-            </span>
-        );
-    };
-
-    const renderSemesterBadge = (semesterValue) => {
-        const styles = {
-            'GANJIL': 'bg-orange-100 text-orange-800 border border-orange-200',
-            'GENAP': 'bg-purple-100 text-purple-800 border border-purple-200'
-        };
-        return (
-            <span className={`px-2 py-1 text-xs font-semibold rounded-md ${styles[semesterValue] || 'bg-gray-100 text-gray-800'}`}>
-                {semesterValue}
-            </span>
-        );
-    };
+    // Render badges have been moved to StatusBadge.jsx and SemesterBadge.jsx
 
     // Calculate Summary Totals
     const totalDraft = statusCounts['DRAFT'] || 0;
@@ -290,27 +275,15 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
             </header>
 
             <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                {flash?.success && <div className="mb-6 text-green-700 bg-green-50 border border-green-200 p-4 rounded-md shadow-sm">{flash.success}</div>}
-                {pageErrors?.general && <div className="mb-6 text-red-700 bg-red-50 border border-red-200 p-4 rounded-md shadow-sm">{pageErrors.general}</div>}
+                {flash?.success && <Toast message={flash.success} type="success" />}
+                {pageErrors?.general && <Toast message={pageErrors.general} type="error" />}
 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total KRS</p>
-                        <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{totalAll.toLocaleString('id-ID')}</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-blue-500">
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Menunggu (Submitted)</p>
-                        <p className="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">{totalSubmitted.toLocaleString('id-ID')}</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-green-500">
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Disetujui (Approved)</p>
-                        <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">{totalApproved.toLocaleString('id-ID')}</p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 border-l-4 border-l-red-500">
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Ditolak (Rejected)</p>
-                        <p className="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">{totalRejected.toLocaleString('id-ID')}</p>
-                    </div>
+                    <StatCard title="Total KRS" value={totalAll.toLocaleString('id-ID')} />
+                    <StatCard title="Menunggu (Submitted)" value={totalSubmitted.toLocaleString('id-ID')} className="border-l-4 border-l-blue-500" />
+                    <StatCard title="Disetujui (Approved)" value={totalApproved.toLocaleString('id-ID')} className="border-l-4 border-l-green-500" />
+                    <StatCard title="Ditolak (Rejected)" value={totalRejected.toLocaleString('id-ID')} className="border-l-4 border-l-red-500" />
                 </div>
 
                 {/* Main Content Box */}
@@ -377,11 +350,11 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                                             <span className="text-gray-500 ml-1">({item.course?.name})</span>
                                         </td>
                                         <td className="p-3">{item.academic_year}</td>
-                                        <td className="p-3">{renderSemesterBadge(item.semester)}</td>
-                                        <td className="p-3">{renderStatusBadge(item.status)}</td>
+                                        <td className="p-3"><SemesterBadge semester={item.semester} /></td>
+                                        <td className="p-3"><StatusBadge status={item.status} /></td>
                                         <td className="p-3 flex gap-3">
                                             <button onClick={() => openEdit(item)} className="font-medium text-blue-600 hover:text-blue-800 dark:hover:text-blue-400 transition">Ubah</button>
-                                            <button onClick={() => deleteItem(item.id)} className="font-medium text-red-600 hover:text-red-800 dark:hover:text-red-400 transition">Hapus</button>
+                                            <button onClick={() => setConfirmingDelete(item)} className="font-medium text-red-600 hover:text-red-800 dark:hover:text-red-400 transition">Hapus</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -623,6 +596,21 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                         <PrimaryButton type="submit" className="bg-blue-600">Simpan Data</PrimaryButton>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal show={confirmingDelete !== null} onClose={() => setConfirmingDelete(null)} maxWidth="md">
+                <div className="p-6">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Hapus Data KRS</h2>
+                    <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                        Apakah Anda yakin ingin menghapus data KRS untuk mahasiswa <strong>{confirmingDelete?.student?.name} ({confirmingDelete?.student?.nim})</strong> pada mata kuliah <strong>{confirmingDelete?.course?.code}</strong>?
+                        Tindakan ini dapat dipulihkan oleh admin (soft delete).
+                    </p>
+                    <div className="mt-6 flex justify-end gap-3">
+                        <SecondaryButton onClick={() => setConfirmingDelete(null)}>Batal</SecondaryButton>
+                        <DangerButton onClick={deleteItem}>Ya, Hapus</DangerButton>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
