@@ -102,7 +102,7 @@ php artisan app:seed-enrollments --count=5000000
 
 **Mekanisme:** Menggunakan `DB::table()->insertOrIgnore()` dengan batch 5.000 baris per insert. Menghindari *Out of Memory* dan N+1 problem.
 
-> ⏱ **Perkiraan waktu:** 4–5 menit di mesin lokal standar.
+> ⏱ **Perkiraan waktu (Teruji Nyata):** ~7 menit 47 detik (467 detik) di mesin lokal standar (5 juta baris).
 
 ---
 
@@ -123,8 +123,8 @@ courses
 
 enrollments
 ├── id (PK)
-├── student_id FK → students.id  (CASCADE DELETE)
-├── course_id  FK → courses.id   (CASCADE DELETE)
+├── student_id FK → students.id  (RESTRICT DELETE)
+├── course_id  FK → courses.id   (RESTRICT DELETE)
 ├── academic_year  VARCHAR(9)    -- format: 2024/2025
 ├── semester   ENUM(GANJIL, GENAP)
 ├── status     ENUM(DRAFT, SUBMITTED, APPROVED, REJECTED)  DEFAULT DRAFT
@@ -142,7 +142,7 @@ enrollments
 |--------|-----|--------|
 | GET | `/enrollments` | List KRS (pagination, sort, filter, search) |
 | POST | `/enrollments` | Create KRS baru (atomic 3 tabel) |
-| PUT | `/enrollments/{id}` | Update KRS |
+| PUT | `/enrollments/{id}` | Update KRS (Hanya mengubah data pivot KRS, TIDAK mengubah master data Mahasiswa/Matkul) |
 | DELETE | `/enrollments/{id}` | Soft-delete KRS |
 | GET | `/enrollments/export` | Export CSV streaming |
 | GET | `/students/search?q=` | Autocomplete mahasiswa |
@@ -189,8 +189,9 @@ Step 2: SELECT * FROM enrollments WHERE student_id IN ([id1, id2, ...])
 ```
 Hasil: **~21ms** vs >60 detik sebelum optimasi.
 
-### 3. Prefix Matching
-`LIKE 'keyword%'` (bukan `LIKE '%keyword%'`) — kompatibel dengan B-Tree Index.
+### 3. Pemisahan Logika Pencarian
+- **Live Search (Cepat):** Menggunakan `LIKE 'keyword%'` (Prefix-only) agar kompatibel penuh dengan B-Tree Index. Sangat cepat untuk pengetikan real-time.
+- **Advanced Filter (Fleksibel):** Mendukung pencarian penuh `LIKE '%keyword%'` (Contains) untuk kolom teks. Lebih lambat dari Live Search namun memenuhi standar pencarian substring (opsi *Contains* tetap dipertahankan).
 
 ### 4. `simplePaginate` (tanpa COUNT)
 Menggantikan `paginate()` yang butuh `COUNT(*)` full-scan (~2 detik).
@@ -214,6 +215,8 @@ Menggantikan `paginate()` yang butuh `COUNT(*)` full-scan (~2 detik).
 - Data histori akademik bersifat krusial dan tidak boleh hilang permanen
 - Diperlukan untuk audit trail (kapan mahasiswa mendaftar, kapan status berubah)
 - Admin bisa memulihkan data yang terhapus secara tidak sengaja via `withTrashed()`
+
+> **Catatan Relasi:** Foreign Key pada tabel `enrollments` menggunakan **RESTRICT DELETE**, bukan *Cascade*. Ini mencegah penghapusan master data (mahasiswa/mata kuliah) jika mereka masih memiliki riwayat KRS yang belum dihapus, menjaga konsistensi prinsip histori akademik.
 
 Data yang di-soft-delete otomatis disembunyikan dari Listing, Search, Filter, dan Export.
 
@@ -246,11 +249,12 @@ Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk memb
 | TS-08 | Search NIM/Nama/Kode MK | ✅ ~21ms via whereIn |
 | TS-09 | Multi-column advanced filter | ✅ AND filter NIM+DRAFT akurat |
 | TS-10 | Logika AND dan OR | ✅ OR selalu ≥ AND |
-| TS-11 | Update KRS | ✅ academic_year, semester, status |
+| TS-11 | Update KRS | ✅ academic_year, semester, status (Master data aman) |
 | TS-12 | Delete KRS (Soft Delete) | ✅ deleted_at terisi, tersembunyi |
-| TS-13 | Export seluruh dataset | ✅ Streaming tanpa OOM |
+| TS-13 | Export seluruh dataset (2 Juta) | ✅ Streaming tanpa OOM & Timeout, tidak ada crash |
+| TS-14 | Export dengan Filter Aktif | ✅ Export DRAFT menghasilkan persis 500.003 baris tanpa HTML |
 
-**Total: 13/13 ✅ LULUS**
+**Total: 14/14 ✅ LULUS**
 
 ---
 
@@ -261,7 +265,7 @@ Sebagai alternatif yang sangat stabil untuk mode gratis (Free Tier), kita menggu
 2. **Web Server:** Railway Web Service (via Nixpacks)
 
 **Fakta Pengujian Lokal vs Online:**
-- **Lokal (Berhasil 100%):** Pada mesin localhost (laptop), perintah `php artisan app:seed-enrollments` (default 5.000.000 data) telah **terbukti berhasil dijalankan dan di-*load* dengan lancar** dalam waktu kurang dari 2 menit (*bulk insert*). UI pencarian dan navigasi merespon secara *real-time* tanpa hambatan.
+- **Lokal (Berhasil 100%):** Pada mesin localhost, perintah `php artisan app:seed-enrollments` (default 5.000.000 data) telah **terbukti berhasil dijalankan dan diukur memakan waktu 7 menit 47 detik** (*bulk insert*). UI pencarian dan navigasi merespon secara *real-time* tanpa hambatan.
 - **Online (Aiven Free Tier):** Mengingat Aiven MySQL hanya memberikan kapasitas gratis maksimal 1 GB, secara teori server ini mampu menampung hingga 4-5 Juta baris (berkat efisiensi tipe data). Pengujian *live* telah membuktikan sistem ini **lancar dan stabil di angka 2.000.000 baris data secara online**.
 
 **Command yang dijalankan:**

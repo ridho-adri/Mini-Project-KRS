@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('enrollments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->constrained('students')->cascadeOnDelete();
-            $table->foreignId('course_id')->constrained('courses')->cascadeOnDelete();
+            $table->foreignId('student_id')->constrained('students')->restrictOnDelete();
+            $table->foreignId('course_id')->constrained('courses')->restrictOnDelete();
             $table->string('academic_year', 9);
             $table->enum('semester', ['GANJIL', 'GENAP']);
             $table->enum('status', ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'])->default('DRAFT');

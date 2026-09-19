@@ -80,7 +80,7 @@ class EnrollmentController extends Controller
                         $dbOp = '=';
                         $dbVal = $val;
                         switch ($op) {
-                            case 'contains': $dbOp = 'like'; $dbVal = "{$val}%"; break;
+                            case 'contains': $dbOp = 'like'; $dbVal = "%{$val}%"; break;
                             case 'startsWith': $dbOp = 'like'; $dbVal = "{$val}%"; break;
                             case 'equal': $dbOp = '='; break;
                         }
