@@ -604,7 +604,7 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                     <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Hapus Data KRS</h2>
                     <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
                         Apakah Anda yakin ingin menghapus data KRS untuk mahasiswa <strong>{confirmingDelete?.student?.name} ({confirmingDelete?.student?.nim})</strong> pada mata kuliah <strong>{confirmingDelete?.course?.code}</strong>?
-                        Tindakan ini dapat dipulihkan oleh admin (soft delete).
+                        Data yang dihapus akan disembunyikan dari sistem (Soft Delete).
                     </p>
                     <div className="mt-6 flex justify-end gap-3">
                         <SecondaryButton onClick={() => setConfirmingDelete(null)}>Batal</SecondaryButton>
