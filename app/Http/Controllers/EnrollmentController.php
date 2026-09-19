@@ -253,20 +253,12 @@ class EnrollmentController extends Controller
         $exportRequest = clone $request;
 
         $query = $this->buildQuery($exportRequest, $needsJoin);
-
         // CRITICAL FIX: remove ALL existing orderBy clauses from the query.
-        // chunkById() or cursor() adds its own ordering. Mixing with a custom
-        // ORDER BY (e.g., students.name) causes the chunk cursor to break or
-        // loop infinitely on the same first chunk.
+        // chunkById() adds its own ordering. Mixing with a custom ORDER BY 
+        // causes the chunk cursor to break.
         $query->getQuery()->orders = null;
 
-        // If query uses JOIN (from relational sort params), chunkById with a
-        // qualified column name ('enrollments.id') may still break on some
-        // MySQL versions. Switch to cursor() (LazyCollection) which is
-        // ORDER-BY-safe and memory-efficient via PHP generator.
-        $usesCursor = $needsJoin;
-
-        $response = new StreamedResponse(function () use ($query, $usesCursor) {
+        $response = new StreamedResponse(function () use ($query) {
             $handle = fopen('php://output', 'w');
 
             if ($handle === false) {
@@ -276,9 +268,11 @@ class EnrollmentController extends Controller
             try {
                 fputcsv($handle, ['NIM', 'Nama Mahasiswa', 'Kode MK', 'Nama MK', 'Semester', 'Tahun Ajaran', 'Status']);
 
-                if ($usesCursor) {
-                    // cursor() = PHP generator, one row in memory at a time. Safe with JOINs.
-                    foreach ($query->cursor() as $enrollment) {
+                // chunkById is completely safe here because we removed custom ORDER BY.
+                // We use 'enrollments.id' to avoid ambiguous column errors if JOINs are active.
+                // The 4th parameter 'id' tells Laravel to read the last ID from `$enrollment->id`.
+                $query->chunkById(5000, function ($enrollments) use ($handle) {
+                    foreach ($enrollments as $enrollment) {
                         fputcsv($handle, [
                             $enrollment->student->nim   ?? '',
                             $enrollment->student->name  ?? '',
@@ -288,40 +282,20 @@ class EnrollmentController extends Controller
                             $enrollment->academic_year,
                             $enrollment->status,
                         ]);
-                        // Flush every 1000 rows to prevent output buffer buildup
-                        if (ob_get_level() > 0) ob_flush();
-                        flush();
                     }
-                } else {
-                    // chunkById is safe here: no custom ORDER BY, no JOIN.
-                    // Use plain 'id' (not 'enrollments.id') to match the column in result set.
-                    $query->chunkById(1000, function ($enrollments) use ($handle) {
-                        foreach ($enrollments as $enrollment) {
-                            fputcsv($handle, [
-                                $enrollment->student->nim   ?? '',
-                                $enrollment->student->name  ?? '',
-                                $enrollment->course->code   ?? '',
-                                $enrollment->course->name   ?? '',
-                                $enrollment->semester,
-                                $enrollment->academic_year,
-                                $enrollment->status,
-                            ]);
-                        }
-                        // Flush after each chunk so bytes reach the client progressively
-                        if (ob_get_level() > 0) ob_flush();
-                        flush();
-                    }, 'id');
-                }
+                    // Flush after each chunk so bytes reach the client progressively
+                    if (ob_get_level() > 0) ob_flush();
+                    flush();
+                }, 'enrollments.id', 'id');
+
             } catch (\Throwable $e) {
-                // SAFETY NET: log the real error but do NOT let PHP send an HTML exception
-                // page into the middle of the CSV stream. Write a clear CSV comment instead.
+                // We echo directly to avoid any further memory allocation issues in case of OOM
+                echo "\n### EXPORT_ERROR ###," . $e->getMessage() . "," . $e->getFile() . ":" . $e->getLine();
                 \Illuminate\Support\Facades\Log::error('CSV export failed mid-stream', [
                     'error' => $e->getMessage(),
                     'file'  => $e->getFile(),
                     'line'  => $e->getLine(),
                 ]);
-                // Write a clearly-marked error row so the file is obviously broken
-                fputcsv($handle, ['### EXPORT_ERROR ###', $e->getMessage(), 'Check laravel.log for details']);
             } finally {
                 fclose($handle);
             }
