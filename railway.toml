@@ -8,3 +8,6 @@ healthcheckPath = "/enrollments"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
+
+[env]
+USE_DENORMALIZATION = "true"
