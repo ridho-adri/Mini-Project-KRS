@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (env('APP_ENV') === 'production') {
+            return;
+        }
+
         Schema::table('enrollments', function (Blueprint $table) {
             $table->string('student_nim', 20)->nullable()->index('enrollments_student_nim_idx');
             $table->string('student_name', 100)->nullable()->index('enrollments_student_name_idx');
@@ -24,6 +28,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (env('APP_ENV') === 'production') {
+            return;
+        }
+
         Schema::table('enrollments', function (Blueprint $table) {
             $table->dropIndex('enrollments_student_nim_idx');
             $table->dropIndex('enrollments_student_name_idx');
