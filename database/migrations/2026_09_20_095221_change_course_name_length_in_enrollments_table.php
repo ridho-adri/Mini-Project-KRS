@@ -11,10 +11,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (env('APP_ENV') === 'production') {
-            return;
-        }
-
         Schema::table('enrollments', function (Blueprint $table) {
             $table->string('course_name', 120)->nullable()->change();
         });
@@ -25,10 +21,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (env('APP_ENV') === 'production') {
-            return;
-        }
-
         Schema::table('enrollments', function (Blueprint $table) {
             $table->string('course_name', 100)->nullable()->change();
         });

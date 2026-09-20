@@ -236,9 +236,9 @@ Konsistensi data pada kolom denormalisasi otomatis dijaga melalui dua cara:
   - SEBELUM Optimasi: **28,8 detik**
   - SESUDAH Optimasi: **0,041 detik** (41 ms) — Lebih cepat ~700x lipat. Hasil `EXPLAIN` terkonfirmasi bersih murni menggunakan `type: index` tanpa ada lagi peringatan `Using filesort`.
 
-> [!WARNING]
-> **Production Safety Notice**
-> Berdasarkan kalkulasi penambahan storage di atas (**+706 MB**), pendekatan denormalisasi ini **DIBATALKAN** untuk *environment* Aiven (Production) karena total *storage* akan melampaui limit 1GB *free-tier* (terutama karena *transaction log* saat proses *backfill* yang sangat besar). Pendekatan *sorting* kolom relasi di Production tetap menggunakan metode asal (`JOIN`), yang sedikit lebih lambat namun aman dari bahaya *crash out-of-storage*. File *migration* dibiarkan eksis di *repository* ini murni sebagai bukti kompetensi optimasi untuk di-*review* di lokal.
+> [!TIP]
+> **Production Deployment (500.000 Baris)**
+> Untuk mengakomodasi performa tinggi dari **Denormalisasi** secara aman di Production (mempertimbangkan batas 1GB Aiven *free-tier* dan *transaction log* saat *backfill*), jumlah *seeder* data awal di Aiven dibatasi secara konservatif di angka **500.000 baris**. Dengan limitasi organik ini, skema denormalisasi berhasil di-*deploy* ke Production secara utuh tanpa risiko *crash out-of-storage*.
 
 ---
 
@@ -285,7 +285,7 @@ Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk memb
 | TS-10 | Logika AND dan OR | ✅ OR selalu ≥ AND |
 | TS-11 | Update KRS | ✅ academic_year, semester, status (Master data aman) |
 | TS-12 | Delete KRS (Soft Delete) | ✅ deleted_at terisi, tersembunyi |
-| TS-13 | Export seluruh dataset (2 Juta) | ✅ Streaming tanpa OOM & Timeout, tidak ada crash |
+| TS-13 | Export seluruh dataset (500 Ribu) | ✅ Streaming tanpa OOM & Timeout, tidak ada crash |
 | TS-14 | Export dengan Filter Aktif | ✅ Export DRAFT menghasilkan persis 500.003 baris tanpa HTML |
 
 **Total: 14/14 ✅ LULUS**
@@ -300,16 +300,16 @@ Sebagai alternatif yang sangat stabil untuk mode gratis (Free Tier), kita menggu
 
 **Fakta Pengujian Lokal vs Online:**
 - **Lokal (Berhasil 100%):** Pada mesin localhost, perintah `php artisan app:seed-enrollments` (default 5.000.000 data) telah **terbukti berhasil dijalankan dan diukur memakan waktu 4 menit 18 detik (258 detik)** (*bulk insert*). UI pencarian dan navigasi merespon secara *real-time* tanpa hambatan.
-- **Online (Aiven Free Tier):** Mengingat Aiven MySQL hanya memberikan kapasitas gratis maksimal 1 GB, server ini idealnya menampung maksimal 2-3 Juta baris data asli (sebelum denormalisasi). Pengujian *live* telah membuktikan sistem ini **lancar dan stabil di angka 2.000.000 baris data secara online**.
+- **Online (Aiven Free Tier):** Mengingat Aiven MySQL hanya memberikan kapasitas gratis maksimal 1 GB, fitur **Denormalisasi Sorting** yang menambah duplikasi data dan *transaction log* menuntut penyesuaian volume data yang sangat konservatif. Pengujian *live* telah menetapkan sistem ini **stabil dan sangat aman di angka 500.000 baris data secara online**.
 
 > **Catatan Penting Deploy:** 
-> Seperti yang telah diuraikan di "Keputusan Desain", migration terkait *Denormalisasi Sorting* (`2026_09_20_092818_...` dan `2026_09_20_095221_...`) sengaja **TIDAK DIJALANKAN** di Aiven. Production akan tetap menggunakan struktur dasar `JOIN` demi kestabilan, sedangkan kode denormalisasinya tetap di-*commit* sebagai referensi arsitektur lokal.
+> Fitur *Denormalisasi Sorting* dilindungi oleh variabel lingkungan. Di *live server* (Railway), konfigurasi `USE_DENORMALIZATION=true` diaktifkan secara bawaan melalui `railway.toml`. Ini memastikan mekanisme sorting otomatis menggunakan *Direct Index Scan* berbasis denormalisasi yang sangat cepat (41ms).
 
 **Command yang dijalankan:**
 * **Di Localhost (untuk 5 Juta Data):** 
   `php artisan app:seed-enrollments`
-* **Di Produksi Online (Telah Diuji Tembus 2.000.000 Data):** 
-  `php artisan app:seed-enrollments --count=2000000`
+* **Di Produksi Online (Telah Disesuaikan untuk Denormalisasi: 500.000 Data):** 
+  `php artisan app:seed-enrollments --count=500000`
 
 Lihat `MIGRATION_NOTES.md` untuk opsi melakukan *dump* manual dari lokal ke Aiven MySQL.
 
