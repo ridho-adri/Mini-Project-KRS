@@ -9,7 +9,6 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
 import StatusBadge from '@/Components/StatusBadge';
 import SemesterBadge from '@/Components/SemesterBadge';
-import StatCard from '@/Components/StatCard';
 import Toast from '@/Components/Toast';
 
 function useDebounce(value, delay) {
@@ -111,7 +110,7 @@ const SearchableAutocomplete = ({ url, placeholder, renderLabel, valueKey, onSel
     );
 };
 
-export default function Index({ enrollments, filters, statusCounts = {} }) {
+export default function Index({ enrollments, filters, cachedAt = null }) {
     const { errors: pageErrors, flash } = usePage().props;
 
     // Table State
@@ -255,12 +254,10 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
 
     // Render badges have been moved to StatusBadge.jsx and SemesterBadge.jsx
 
-    // Calculate Summary Totals
-    const totalDraft = statusCounts['DRAFT'] || 0;
-    const totalSubmitted = statusCounts['SUBMITTED'] || 0;
-    const totalApproved = statusCounts['APPROVED'] || 0;
-    const totalRejected = statusCounts['REJECTED'] || 0;
-    const totalAll = totalDraft + totalSubmitted + totalApproved + totalRejected;
+    // Pagination info
+    const currentPage    = enrollments.current_page || 1;
+    const hasNextPage    = !!enrollments.next_page_url;
+    const hasPrevPage    = !!enrollments.prev_page_url;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-12">
@@ -278,13 +275,7 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                 {flash?.success && <Toast message={flash.success} type="success" />}
                 {pageErrors?.general && <Toast message={pageErrors.general} type="error" />}
 
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <StatCard title="Total KRS" value={totalAll.toLocaleString('id-ID')} />
-                    <StatCard title="Menunggu (Submitted)" value={totalSubmitted.toLocaleString('id-ID')} className="border-l-4 border-l-blue-500" />
-                    <StatCard title="Disetujui (Approved)" value={totalApproved.toLocaleString('id-ID')} className="border-l-4 border-l-green-500" />
-                    <StatCard title="Ditolak (Rejected)" value={totalRejected.toLocaleString('id-ID')} className="border-l-4 border-l-red-500" />
-                </div>
+                {/* Summary Cards removed */}
 
                 {/* Main Content Box */}
                 <div className="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 border border-gray-100 dark:border-gray-700">
@@ -365,31 +356,29 @@ export default function Index({ enrollments, filters, statusCounts = {} }) {
                         </table>
                     </div>
 
-                    {/* Pagination */}
+                    {/* Pagination — simplePaginate (tanpa COUNT*), menampilkan nomor halaman saat ini */}
                     <div className="mt-6 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600 dark:text-gray-400 gap-4">
-                        <div className="flex items-center">
-                            Menampilkan data halaman ini
-                            <select className="ml-4 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm py-1 pl-2 pr-8 shadow-sm" value={pageSize} onChange={e => { setPageSize(e.target.value); applyFilters({ page_size: e.target.value, page: 1 }); }}>
+                        <div className="flex items-center flex-wrap gap-2">
+                            <span>Halaman <strong>{currentPage}</strong>{!hasNextPage ? ' (terakhir)' : ''}</span>
+                            <span className="text-gray-400">|</span>
+                            <select className="border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm py-1 pl-2 pr-8 shadow-sm" value={pageSize} onChange={e => { setPageSize(e.target.value); applyFilters({ page_size: e.target.value, page: 1 }); }}>
                                 <option value="15">15 per halaman</option>
                                 <option value="50">50 per halaman</option>
                                 <option value="100">100 per halaman</option>
                             </select>
                         </div>
-                        <div className="flex gap-2 flex-wrap justify-center">
-                            <button 
-                                onClick={() => enrollments.prev_page_url && router.get(enrollments.prev_page_url, {}, {preserveState:true})}
-                                disabled={!enrollments.prev_page_url}
-                                className={`px-4 py-2 border rounded-md text-sm font-medium transition-colors ${!enrollments.prev_page_url ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                            >
-                                &laquo; Sebelumnya
-                            </button>
-                            <button 
-                                onClick={() => enrollments.next_page_url && router.get(enrollments.next_page_url, {}, {preserveState:true})}
-                                disabled={!enrollments.next_page_url}
-                                className={`px-4 py-2 border rounded-md text-sm font-medium transition-colors ${!enrollments.next_page_url ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                            >
-                                Selanjutnya &raquo;
-                            </button>
+                        <div className="flex gap-2 flex-wrap justify-center items-center">
+                            {/* Navigasi prev/next */}
+                            <button
+                                onClick={() => hasPrevPage && router.get(enrollments.prev_page_url, {}, {preserveState:true})}
+                                disabled={!hasPrevPage}
+                                className={`px-3 py-1.5 border rounded-md text-sm font-medium transition-colors ${!hasPrevPage ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-400' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                            >&laquo; Sebelumnya</button>
+                            <button
+                                onClick={() => hasNextPage && router.get(enrollments.next_page_url, {}, {preserveState:true})}
+                                disabled={!hasNextPage}
+                                className={`px-3 py-1.5 border rounded-md text-sm font-medium transition-colors ${!hasNextPage ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-400' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                            >Selanjutnya &raquo;</button>
                         </div>
                     </div>
                 </div>

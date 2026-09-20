@@ -16,4 +16,21 @@ class Course extends Model
     {
         return $this->hasMany(Enrollment::class);
     }
+
+    protected static function booted()
+    {
+        static::updated(function ($course) {
+            $updates = [];
+            if ($course->wasChanged('code')) {
+                $updates['course_code'] = $course->code;
+            }
+            if ($course->wasChanged('name')) {
+                $updates['course_name'] = $course->name;
+            }
+            
+            if (!empty($updates)) {
+                Enrollment::where('course_id', $course->id)->update($updates);
+            }
+        });
+    }
 }

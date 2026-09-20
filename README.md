@@ -128,6 +128,10 @@ enrollments
 ├── academic_year  VARCHAR(9)    -- format: 2024/2025
 ├── semester   ENUM(GANJIL, GENAP)
 ├── status     ENUM(DRAFT, SUBMITTED, APPROVED, REJECTED)  DEFAULT DRAFT
+├── student_nim    VARCHAR(20)   -- (denormalized, lihat penjelasan di bawah)
+├── student_name   VARCHAR(100)  -- (denormalized)
+├── course_code    VARCHAR(20)   -- (denormalized)
+├── course_name    VARCHAR(100)  -- (denormalized)
 ├── deleted_at TIMESTAMP NULL    -- Soft Delete
 ├── UNIQUE KEY (student_id, course_id, academic_year, semester)
 └── INDEX      (academic_year, semester, status)
@@ -206,6 +210,30 @@ Menggantikan `paginate()` yang butuh `COUNT(*)` full-scan (~2 detik).
 | Search 4 kolom (whereIn) | **~21ms** |
 | Advanced filter multi-kolom | **~11ms** |
 | Export streaming 25k baris | **495ms** |
+
+---
+
+## 🚀 Keputusan Desain: Denormalisasi Kolom Sort
+
+### 1. Masalah: Sorting Relasional Lambat
+Sorting berdasarkan kolom dari tabel relasi (NIM, Nama Mahasiswa, Kode MK, Nama MK) awalnya sangat lambat (memakan waktu aktual **28,8 detik**). Hasil `EXPLAIN` membuktikan MySQL tidak bisa memakai index saat melakukan `JOIN`, akibat kombinasi filter *soft-delete* dan `INNER JOIN` ke tabel `courses` yang memaksa MySQL memilih tabel `enrollments` sebagai *driving table*. Akibatnya, MySQL melakukan `Using temporary; Using filesort` pada lebih dari 2 juta baris di dalam RAM.
+
+### 2. Solusi: Denormalisasi Kolom
+Untuk mengatasi hal ini, kolom `student_nim`, `student_name`, `course_code`, dan `course_name` didenormalisasi (diduplikasi) secara langsung ke tabel `enrollments`. Masing-masing kolom baru ini diberi *index* terpisah, **KHUSUS untuk keperluan sorting**. 
+Relasi *Foreign Key* asli (`student_id`, `course_id`) **tetap dipertahankan dan tidak berubah** — operasi `JOIN` ke tabel master tetap dipakai untuk keperluan pencarian (search) dan filter. Denormalisasi ini murni sebagai jalan pintas *sorting*, bukan pengganti struktur relasional.
+
+### 3. Sinkronisasi Data Konsisten
+Konsistensi data pada kolom denormalisasi otomatis dijaga melalui dua cara:
+- Saat `Create`/`Update` KRS (dalam *transaction* yang sama), keempat kolom ini otomatis diisi dari data master.
+- Terdapat **Model Event Listener** di metode `booted()` pada model `Student` dan `Course`. Jika data asli master berubah, listener akan melakukan *mass-update* ke `enrollments`. Listener ini diproteksi oleh metode `$model->wasChanged('nim')` dan sejenisnya agar sangat efisien—sehingga hanya ter-*trigger* apabila field yang benar-benar relevan saja yang diedit.
+
+### 4. Hasil Pengukuran Uji Coba Lokal
+- **Waktu Backfill (5 Juta Baris):** `508,47 detik` (~8,5 menit) menggunakan *chunking* + `Bulk UPDATE JOIN`.
+- **Ukuran Storage Tambahan:** Meningkat dari `765,44 MB` menjadi `2.531,84 MB` (Bertambah **`~1.766 MB`** di lokal 5 juta baris).
+- **Ekstrapolasi Production (2 Juta Baris):** Penambahan storage diperkirakan **`~706,56 MB`**.
+- **Waktu Sorting (NIM):** 
+  - SEBELUM Optimasi: **28,8 detik**
+  - SESUDAH Optimasi: **0,041 detik** (41 ms) — Lebih cepat ~700x lipat. Hasil `EXPLAIN` terkonfirmasi bersih murni menggunakan `type: index` tanpa ada lagi peringatan `Using filesort`.
 
 ---
 

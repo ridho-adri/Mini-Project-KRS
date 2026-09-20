@@ -10,7 +10,7 @@ class Enrollment extends Model
     /** @use HasFactory<\Database\Factories\EnrollmentFactory> */
     use HasFactory, \Illuminate\Database\Eloquent\SoftDeletes;
 
-    protected $fillable = ['student_id', 'course_id', 'academic_year', 'semester', 'status'];
+    protected $fillable = ['student_id', 'course_id', 'academic_year', 'semester', 'status', 'student_nim', 'student_name', 'course_code', 'course_name'];
 
     public function student()
     {

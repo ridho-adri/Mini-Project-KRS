@@ -18,28 +18,7 @@ class EnrollmentController extends Controller
     {
         $query = Enrollment::query()->with(['student', 'course']);
 
-        // Check if we need to join for sorting
-        $sorts = [];
-        if ($request->filled('sort_orders')) {
-            $sortOrders = json_decode($request->sort_orders, true);
-            if (is_array($sortOrders)) $sorts = $sortOrders;
-        } elseif ($request->filled('sort_by')) {
-            $sorts[] = ['col' => $request->sort_by];
-        }
-
-        foreach ($sorts as $s) {
-            $col = $s['col'] ?? '';
-            if (in_array($col, ['nim', 'student_name', 'code', 'course_name'])) {
-                $needsJoin = true;
-                break;
-            }
-        }
-
-        if ($needsJoin) {
-            $query->select('enrollments.*')
-                  ->join('students', 'enrollments.student_id', '=', 'students.id')
-                  ->join('courses', 'enrollments.course_id', '=', 'courses.id');
-        }
+        // Sorting is now handled purely on enrollments table using denormalized columns.
 
         if ($request->filled('status')) {
             $query->where('enrollments.status', $request->status);
@@ -123,24 +102,20 @@ class EnrollmentController extends Controller
         $needsJoin = false;
         $query = $this->buildQuery($request, $needsJoin);
 
-        // Menghitung summary stats berdasarkan filter yang sedang aktif
-        $statsQuery = clone $query;
-        // Hapus orders dan limit untuk stats
-        $statsQuery->getQuery()->orders = [];
-        $statusCounts = $statsQuery->select('enrollments.status', DB::raw('count(*) as total'))
-                                   ->groupBy('enrollments.status')
-                                   ->pluck('total', 'status');
-
+        // =====================================================================
+        // DATA PAGINATION — simplePaginate() TIDAK menjalankan COUNT(*).
+        // Ini sengaja: untuk 5M baris, COUNT live = OOM di Aiven.
+        // =====================================================================
         $allowedSorts = [
             'academic_year' => 'enrollments.academic_year',
-            'semester' => 'enrollments.semester',
-            'status' => 'enrollments.status',
-            'id' => 'enrollments.id',
-            'created_at' => 'enrollments.created_at',
-            'nim' => 'students.nim',
-            'student_name' => 'students.name',
-            'code' => 'courses.code',
-            'course_name' => 'courses.name'
+            'semester'      => 'enrollments.semester',
+            'status'        => 'enrollments.status',
+            'id'            => 'enrollments.id',
+            'created_at'    => 'enrollments.created_at',
+            'nim'           => 'enrollments.student_nim',
+            'student_name'  => 'enrollments.student_name',
+            'code'          => 'enrollments.course_code',
+            'course_name'   => 'enrollments.course_name',
         ];
 
         if ($request->filled('sort_orders')) {
@@ -161,13 +136,12 @@ class EnrollmentController extends Controller
             $query->orderBy('enrollments.id', 'desc');
         }
 
-        $pageSize = $request->input('page_size', 15);
+        $pageSize    = (int) $request->input('page_size', 15);
         $enrollments = $query->simplePaginate($pageSize)->withQueryString();
 
         return Inertia::render('Enrollments/Index', [
-            'enrollments' => $enrollments,
-            'filters' => $request->all(),
-            'statusCounts' => $statusCounts,
+            'enrollments'  => $enrollments,
+            'filters'      => $request->all(),
         ]);
     }
 
@@ -183,6 +157,8 @@ class EnrollmentController extends Controller
                         'email' => $request->student_email,
                     ]);
                     $studentId = $student->id;
+                } else {
+                    $student = Student::find($studentId);
                 }
 
                 $courseId = $request->course_id;
@@ -193,6 +169,8 @@ class EnrollmentController extends Controller
                         'credits' => $request->course_credits,
                     ]);
                     $courseId = $course->id;
+                } else {
+                    $course = Course::find($courseId);
                 }
 
                 $exists = Enrollment::where('student_id', $studentId)
@@ -213,6 +191,10 @@ class EnrollmentController extends Controller
                     'academic_year' => $request->academic_year,
                     'semester' => $request->semester,
                     'status' => $request->status,
+                    'student_nim' => $student->nim,
+                    'student_name' => $student->name,
+                    'course_code' => $course->code,
+                    'course_name' => $course->name,
                 ]);
             });
 
@@ -227,7 +209,17 @@ class EnrollmentController extends Controller
     public function update(UpdateEnrollmentRequest $request, string $id)
     {
         $enrollment = Enrollment::findOrFail($id);
-        $enrollment->update($request->validated());
+        $data = $request->validated();
+        
+        $student = Student::find($data['student_id']);
+        $course = Course::find($data['course_id']);
+        
+        $data['student_nim'] = $student->nim;
+        $data['student_name'] = $student->name;
+        $data['course_code'] = $course->code;
+        $data['course_name'] = $course->name;
+
+        $enrollment->update($data);
         return redirect()->back()->with('success', 'Enrollment updated.');
     }
 
