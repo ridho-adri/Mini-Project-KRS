@@ -238,16 +238,16 @@ class EnrollmentController extends Controller
     {
         $enrollment = Enrollment::findOrFail($id);
         $data = $request->validated();
-        
-        $student = Student::find($data['student_id']);
-        $course = Course::find($data['course_id']);
-        
         $useDenormalization = env('USE_DENORMALIZATION', false);
         if ($useDenormalization) {
-            $data['student_nim'] = $student->nim;
-            $data['student_name'] = $student->name;
-            $data['course_code'] = $course->code;
-            $data['course_name'] = $course->name;
+            $student = Student::find($enrollment->student_id);
+            $course = Course::find($enrollment->course_id);
+            if ($student && $course) {
+                $data['student_nim'] = $student->nim;
+                $data['student_name'] = $student->name;
+                $data['course_code'] = $course->code;
+                $data['course_name'] = $course->name;
+            }
         }
 
         $enrollment->update($data);
