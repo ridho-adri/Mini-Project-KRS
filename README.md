@@ -102,7 +102,7 @@ php artisan app:seed-enrollments --count=5000000
 
 **Mekanisme:** Menggunakan `DB::table()->insertOrIgnore()` dengan batch 5.000 baris per insert. Menghindari *Out of Memory* dan N+1 problem.
 
-> ⏱ **Perkiraan waktu (Teruji Nyata):** ~7 menit 47 detik (467 detik) di mesin lokal standar (5 juta baris).
+> ⏱ **Perkiraan waktu (Teruji Nyata):** ~4 menit 18 detik (258 detik) di mesin lokal standar (5 juta baris).
 
 ---
 
@@ -228,12 +228,17 @@ Konsistensi data pada kolom denormalisasi otomatis dijaga melalui dua cara:
 - Terdapat **Model Event Listener** di metode `booted()` pada model `Student` dan `Course`. Jika data asli master berubah, listener akan melakukan *mass-update* ke `enrollments`. Listener ini diproteksi oleh metode `$model->wasChanged('nim')` dan sejenisnya agar sangat efisien—sehingga hanya ter-*trigger* apabila field yang benar-benar relevan saja yang diedit.
 
 ### 4. Hasil Pengukuran Uji Coba Lokal
+*(Semua angka di bawah ini murni valid untuk lingkungan LOKAL saja)*
 - **Waktu Backfill (5 Juta Baris):** `508,47 detik` (~8,5 menit) menggunakan *chunking* + `Bulk UPDATE JOIN`.
 - **Ukuran Storage Tambahan:** Meningkat dari `765,44 MB` menjadi `2.531,84 MB` (Bertambah **`~1.766 MB`** di lokal 5 juta baris).
 - **Ekstrapolasi Production (2 Juta Baris):** Penambahan storage diperkirakan **`~706,56 MB`**.
 - **Waktu Sorting (NIM):** 
   - SEBELUM Optimasi: **28,8 detik**
   - SESUDAH Optimasi: **0,041 detik** (41 ms) — Lebih cepat ~700x lipat. Hasil `EXPLAIN` terkonfirmasi bersih murni menggunakan `type: index` tanpa ada lagi peringatan `Using filesort`.
+
+> [!TIP]
+> **Production Deployment Sukses**
+> Berdasarkan kalkulasi penambahan storage di atas (**+706 MB** untuk 2 juta baris), total storage Aiven akan rawan melebihi kapasitas 1 GB *free-tier*. Untuk mengakomodasi performa tinggi dari **Denormalisasi** secara aman di Production, jumlah *seeder* data awal di Aiven dibatasi di angka **1,2 Juta baris**. Dengan limitasi organik ini, skema denormalisasi berhasil di-*deploy* ke Production secara utuh tanpa risiko *crash out-of-storage*.
 
 ---
 
@@ -272,7 +277,8 @@ Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk memb
 | TS-03 | Input invalid dari frontend | ✅ 8 error validasi terdeteksi |
 | TS-04 | Payload invalid dari API | ✅ `exists()` menolak ID fiktif |
 | TS-05 | Ganti page/page size | ✅ 15 & 50 baris berjalan benar |
-| TS-06 | Sort ASC/DESC per header | ✅ 1.85ms |
+| TS-06 | Sort kolom non-relasi (Status/Semester) bawaan | ✅ 1.85ms |
+| TS-06B| Sort kolom relasi (NIM/Nama/Kode MK) setelah denormalisasi | ✅ 41ms |
 | TS-07 | Filter Status + Semester | ✅ DRAFT=1.248.427, GANJIL=2.500.003 |
 | TS-08 | Search NIM/Nama/Kode MK | ✅ ~21ms via whereIn |
 | TS-09 | Multi-column advanced filter | ✅ AND filter NIM+DRAFT akurat |
@@ -293,8 +299,11 @@ Sebagai alternatif yang sangat stabil untuk mode gratis (Free Tier), kita menggu
 2. **Web Server:** Railway Web Service (via Nixpacks)
 
 **Fakta Pengujian Lokal vs Online:**
-- **Lokal (Berhasil 100%):** Pada mesin localhost, perintah `php artisan app:seed-enrollments` (default 5.000.000 data) telah **terbukti berhasil dijalankan dan diukur memakan waktu 7 menit 47 detik** (*bulk insert*). UI pencarian dan navigasi merespon secara *real-time* tanpa hambatan.
-- **Online (Aiven Free Tier):** Mengingat Aiven MySQL hanya memberikan kapasitas gratis maksimal 1 GB, secara teori server ini mampu menampung hingga 4-5 Juta baris (berkat efisiensi tipe data). Pengujian *live* telah membuktikan sistem ini **lancar dan stabil di angka 2.000.000 baris data secara online**.
+- **Lokal (Berhasil 100%):** Pada mesin localhost, perintah `php artisan app:seed-enrollments` (default 5.000.000 data) telah **terbukti berhasil dijalankan dan diukur memakan waktu 4 menit 18 detik (258 detik)** (*bulk insert*). UI pencarian dan navigasi merespon secara *real-time* tanpa hambatan.
+- **Online (Aiven Free Tier):** Mengingat Aiven MySQL hanya memberikan kapasitas gratis maksimal 1 GB, fitur **Denormalisasi Sorting** yang menambah duplikasi data menuntut penyesuaian volume data. Pengujian *live* telah membuktikan sistem ini dengan skema denormalisasi **sangat cepat dan stabil di angka 1.200.000 baris data secara online**.
+
+> **Catatan Penting Deploy:** 
+> Fitur *Denormalisasi Sorting* dilindungi oleh variabel lingkungan. Di *live server* (Railway), Anda cukup mendefinisikan `USE_DENORMALIZATION=true` di tab Variables. Ini akan secara otomatis beralih dari mekanisme sorting `JOIN` tradisional menjadi *Direct Index Scan* berbasis denormalisasi yang mampu menyelesaikan *query* dalam hitungan puluhan milidetik.
 
 **Command yang dijalankan:**
 * **Di Localhost (untuk 5 Juta Data):** 
