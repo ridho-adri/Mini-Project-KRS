@@ -17,7 +17,7 @@ class EnrollmentController extends Controller
     private function buildQuery(Request $request, &$needsJoin = false)
     {
         $query = Enrollment::query()->with(['student', 'course']);
-        $useDenormalization = env('USE_DENORMALIZATION', false);
+        $useDenormalization = filter_var(env('USE_DENORMALIZATION', false), FILTER_VALIDATE_BOOLEAN);
 
         if (!$useDenormalization) {
             if ($request->filled('sort_by') && in_array($request->sort_by, ['nim', 'student_name', 'code', 'course_name'])) {
@@ -126,7 +126,7 @@ class EnrollmentController extends Controller
         // DATA PAGINATION — simplePaginate() TIDAK menjalankan COUNT(*).
         // Ini sengaja: untuk 5M baris, COUNT live = OOM di Aiven.
         // =====================================================================
-        $useDenormalization = env('USE_DENORMALIZATION', false);
+        $useDenormalization = filter_var(env('USE_DENORMALIZATION', false), FILTER_VALIDATE_BOOLEAN);
         
         $allowedSorts = [
             'academic_year' => 'enrollments.academic_year',
@@ -215,7 +215,7 @@ class EnrollmentController extends Controller
                     'status' => $request->status,
                 ];
                 
-                $useDenormalization = env('USE_DENORMALIZATION', false);
+                $useDenormalization = filter_var(env('USE_DENORMALIZATION', false), FILTER_VALIDATE_BOOLEAN);
                 if ($useDenormalization) {
                     $enrollmentData['student_nim'] = $student->nim;
                     $enrollmentData['student_name'] = $student->name;
@@ -238,7 +238,7 @@ class EnrollmentController extends Controller
     {
         $enrollment = Enrollment::findOrFail($id);
         $data = $request->validated();
-        $useDenormalization = env('USE_DENORMALIZATION', false);
+        $useDenormalization = filter_var(env('USE_DENORMALIZATION', false), FILTER_VALIDATE_BOOLEAN);
         if ($useDenormalization) {
             $student = Student::find($enrollment->student_id);
             $course = Course::find($enrollment->course_id);
