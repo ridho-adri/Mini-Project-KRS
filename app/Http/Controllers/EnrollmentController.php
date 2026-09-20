@@ -17,8 +17,28 @@ class EnrollmentController extends Controller
     private function buildQuery(Request $request, &$needsJoin = false)
     {
         $query = Enrollment::query()->with(['student', 'course']);
+        $useDenormalization = env('USE_DENORMALIZATION', false);
 
-        // Sorting is now handled purely on enrollments table using denormalized columns.
+        if (!$useDenormalization) {
+            if ($request->filled('sort_by') && in_array($request->sort_by, ['nim', 'student_name', 'code', 'course_name'])) {
+                $needsJoin = true;
+            }
+            if ($request->filled('sort_orders')) {
+                $sortOrders = json_decode($request->sort_orders, true);
+                if (is_array($sortOrders)) {
+                    foreach ($sortOrders as $order) {
+                        if (in_array($order['col'] ?? '', ['nim', 'student_name', 'code', 'course_name'])) {
+                            $needsJoin = true;
+                        }
+                    }
+                }
+            }
+            if ($needsJoin) {
+                $query->join('students', 'enrollments.student_id', '=', 'students.id')
+                      ->join('courses', 'enrollments.course_id', '=', 'courses.id')
+                      ->select('enrollments.*');
+            }
+        }
 
         if ($request->filled('status')) {
             $query->where('enrollments.status', $request->status);
@@ -106,16 +126,18 @@ class EnrollmentController extends Controller
         // DATA PAGINATION — simplePaginate() TIDAK menjalankan COUNT(*).
         // Ini sengaja: untuk 5M baris, COUNT live = OOM di Aiven.
         // =====================================================================
+        $useDenormalization = env('USE_DENORMALIZATION', false);
+        
         $allowedSorts = [
             'academic_year' => 'enrollments.academic_year',
             'semester'      => 'enrollments.semester',
             'status'        => 'enrollments.status',
             'id'            => 'enrollments.id',
             'created_at'    => 'enrollments.created_at',
-            'nim'           => 'enrollments.student_nim',
-            'student_name'  => 'enrollments.student_name',
-            'code'          => 'enrollments.course_code',
-            'course_name'   => 'enrollments.course_name',
+            'nim'           => $useDenormalization ? 'enrollments.student_nim' : 'students.nim',
+            'student_name'  => $useDenormalization ? 'enrollments.student_name' : 'students.name',
+            'code'          => $useDenormalization ? 'enrollments.course_code' : 'courses.code',
+            'course_name'   => $useDenormalization ? 'enrollments.course_name' : 'courses.name',
         ];
 
         if ($request->filled('sort_orders')) {
@@ -185,17 +207,23 @@ class EnrollmentController extends Controller
                     ]);
                 }
 
-                Enrollment::create([
+                $enrollmentData = [
                     'student_id' => $studentId,
                     'course_id' => $courseId,
                     'academic_year' => $request->academic_year,
                     'semester' => $request->semester,
                     'status' => $request->status,
-                    'student_nim' => $student->nim,
-                    'student_name' => $student->name,
-                    'course_code' => $course->code,
-                    'course_name' => $course->name,
-                ]);
+                ];
+                
+                $useDenormalization = env('USE_DENORMALIZATION', false);
+                if ($useDenormalization) {
+                    $enrollmentData['student_nim'] = $student->nim;
+                    $enrollmentData['student_name'] = $student->name;
+                    $enrollmentData['course_code'] = $course->code;
+                    $enrollmentData['course_name'] = $course->name;
+                }
+
+                Enrollment::create($enrollmentData);
             });
 
             return redirect()->back()->with('success', 'Enrollment created successfully.');
@@ -214,10 +242,13 @@ class EnrollmentController extends Controller
         $student = Student::find($data['student_id']);
         $course = Course::find($data['course_id']);
         
-        $data['student_nim'] = $student->nim;
-        $data['student_name'] = $student->name;
-        $data['course_code'] = $course->code;
-        $data['course_name'] = $course->name;
+        $useDenormalization = env('USE_DENORMALIZATION', false);
+        if ($useDenormalization) {
+            $data['student_nim'] = $student->nim;
+            $data['student_name'] = $student->name;
+            $data['course_code'] = $course->code;
+            $data['course_name'] = $course->name;
+        }
 
         $enrollment->update($data);
         return redirect()->back()->with('success', 'Enrollment updated.');
