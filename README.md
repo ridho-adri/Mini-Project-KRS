@@ -285,7 +285,7 @@ Klik header kolom (ID, Tahun Ajaran, Semester, Status) — klik ulang untuk memb
 | TS-10 | Logika AND dan OR | ✅ OR selalu ≥ AND |
 | TS-11 | Update KRS | ✅ academic_year, semester, status (Master data aman) |
 | TS-12 | Delete KRS (Soft Delete) | ✅ deleted_at terisi, tersembunyi |
-| TS-13 | Export seluruh dataset (2 Juta) | ✅ Streaming tanpa OOM & Timeout, tidak ada crash |
+| TS-13 | Export seluruh dataset (1,2 Juta) | ✅ Streaming tanpa OOM & Timeout, tidak ada crash |
 | TS-14 | Export dengan Filter Aktif | ✅ Export DRAFT menghasilkan persis 500.003 baris tanpa HTML |
 
 **Total: 14/14 ✅ LULUS**
@@ -308,8 +308,8 @@ Sebagai alternatif yang sangat stabil untuk mode gratis (Free Tier), kita menggu
 **Command yang dijalankan:**
 * **Di Localhost (untuk 5 Juta Data):** 
   `php artisan app:seed-enrollments`
-* **Di Produksi Online (Telah Diuji Tembus 2.000.000 Data):** 
-  `php artisan app:seed-enrollments --count=2000000`
+* **Di Produksi Online (1.200.000 Data dengan Denormalisasi):** 
+  `php artisan app:seed-enrollments --count=1200000`
 
 Lihat `MIGRATION_NOTES.md` untuk opsi melakukan *dump* manual dari lokal ke Aiven MySQL.
 
